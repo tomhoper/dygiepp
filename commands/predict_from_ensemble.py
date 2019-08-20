@@ -144,14 +144,28 @@ def predict_from_ensemble(trigger_prediction_dirs, trigger_vocab_dirs, arg_predi
 
 
 def main():
-    ensemble_dir = "/data/dwadden/proj/dygie/dygie-experiments/dwadden/models/final_ensemble"
-    trigger_dirs = {k: path.join(ensemble_dir, "scores_trig_{0}".format(k))
+    ensemble_dir = argv[1]
+    out_dir = argv[2]
+    seed = int(argv[3])
+    # ensemble_dir = "/data/dwadden/proj/dygie/dygie-experiments/dwadden/models/final_ensemble"
+    # trigger_dirs = {k: path.join(ensemble_dir, "trigger_scores_trig_{0}".format(k))
+    #                 for k in [0, 1, 2, 3]}
+    # trigger_vocab_dirs = [path.join(ensemble_dir, "vocabulary_trig_{0}".format(k)) for k in [0, 1, 2 ,3]]
+
+    trigger_dirs = {k: f"{ensemble_dir}/triger_ensemble_seed_{seed}_{k}/prediction_scores_test"
                     for k in [0, 1, 2, 3]}
-    trigger_vocab_dirs = [path.join(ensemble_dir, "vocabulary_trig_{0}".format(k)) for k in [0, 1, 2 ,3]]
-    arg_dir = path.join(ensemble_dir, "scores_arg")
-    arg_vocab_dir = path.join(ensemble_dir, "vocabulary_arg")
+    trigger_vocab_dirs = [f"{ensemble_dir}/triger_ensemble_seed_{seed}_{k}/vocabulary" for k in [0, 1, 2, 3]]
+
+    # arg_dir = path.join(ensemble_dir, "scores_arg")
+    # arg_vocab_dir = path.join(ensemble_dir, "vocabulary_arg")
+
+    # TODO(dwadden) change this when finished making arg predictions..
+
+    arg_dir = "/data/dwadden/proj/dygie/dygie-experiments/dwadden/models/model_logs/2019_05_18_base_model/prediction_scores"
+    arg_vocab_dir = "/data/dwadden/proj/dygie/dygie-experiments/dwadden/models/model_logs/2019_05_18_base_model/vocabulary"
+
     test_file = "/data/dwadden/proj/dygie/dygie-experiments/datasets/ace-event-tongtao-settings/json/test.json"
-    output_file = path.join(ensemble_dir, "predictions.json")
+    output_file = path.join(out_dir, f"predictions_{seed}.json")
     predict_from_ensemble(trigger_dirs, trigger_vocab_dirs, arg_dir, arg_vocab_dir, test_file, output_file)
 
 
