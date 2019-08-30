@@ -146,26 +146,19 @@ def predict_from_ensemble(trigger_prediction_dirs, trigger_vocab_dirs, arg_predi
 def main():
     ensemble_dir = argv[1]
     out_dir = argv[2]
-    seed = int(argv[3])
-    # ensemble_dir = "/data/dwadden/proj/dygie/dygie-experiments/dwadden/models/final_ensemble"
-    # trigger_dirs = {k: path.join(ensemble_dir, "trigger_scores_trig_{0}".format(k))
-    #                 for k in [0, 1, 2, 3]}
-    # trigger_vocab_dirs = [path.join(ensemble_dir, "vocabulary_trig_{0}".format(k)) for k in [0, 1, 2 ,3]]
+    trigger_seed = int(argv[3])
+    arg_seed = int(argv[4])
 
-    trigger_dirs = {k: f"{ensemble_dir}/triger_ensemble_seed_2_{k}/prediction_scores_test"
+    trigger_dirs = {k: f"{ensemble_dir}/triger_ensemble_seed_{trigger_seed}_{k}/prediction_scores_test"
                     for k in [0, 1, 2, 3]}
-    trigger_vocab_dirs = [f"{ensemble_dir}/triger_ensemble_seed_2_{k}/vocabulary" for k in [0, 1, 2, 3]]
+    trigger_vocab_dirs = [f"{ensemble_dir}/triger_ensemble_seed_{trigger_seed}_{k}/vocabulary"
+                          for k in [0, 1, 2, 3]]
 
-    # arg_dir = path.join(ensemble_dir, "scores_arg")
-    # arg_vocab_dir = path.join(ensemble_dir, "vocabulary_arg")
-
-    # TODO(dwadden) change this when finished making arg predictions..
-
-    arg_dir = f"/data/dwadden/proj/dygie/dygie-experiments/dwadden/models/model_logs_camera_ready_v2/events_seed_{seed}/prediction_scores_test"
-    arg_vocab_dir = f"/data/dwadden/proj/dygie/dygie-experiments/dwadden/models/model_logs_camera_ready_v2/events_seed_{seed}/vocabulary"
+    arg_dir = f"{ensemble_dir}/events_seed_{arg_seed}/prediction_scores_test"
+    arg_vocab_dir = f"{ensemble_dir}/events_seed_{arg_seed}/vocabulary"
 
     test_file = "/data/dwadden/proj/dygie/dygie-experiments/datasets/ace-event-tongtao-settings/json/test.json"
-    output_file = path.join(out_dir, f"arg_predictions_{seed}.json")
+    output_file = path.join(out_dir, f"predictions_trig_{trigger_seed}_arg_{arg_seed}.json")
     predict_from_ensemble(trigger_dirs, trigger_vocab_dirs, arg_dir, arg_vocab_dir, test_file, output_file)
 
 
