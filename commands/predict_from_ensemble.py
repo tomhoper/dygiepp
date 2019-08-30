@@ -128,18 +128,24 @@ def get_gold_data(test_file):
     return res
 
 
-def predict_from_ensemble(trigger_prediction_dirs, trigger_vocab_dirs, arg_prediction_dir,
-                          arg_vocab_dir, test_file, output_file):
+def predict_from_ensemble(trigger_prediction_dirs, trigger_vocab_dirs, arg_prediction_dirs,
+                          arg_vocab_dirs, test_file, output_file):
     trig_pred_dict = {k: get_pred_dicts(v) for k, v in trigger_prediction_dirs.items()}
     trigger_vocabs = [Vocabulary.from_files(v) for v in trigger_vocab_dirs]
-    arg_preds = get_pred_dicts(arg_prediction_dir)
-    arg_vocab = Vocabulary.from_files(arg_vocab_dir)
+
+    arg_pred_dict = {k: get_pred_dicts(v) for k, v in arg_prediction_dirs.items()}
+    arg_vocabs = [Vocabulary.from_files(v) for v in arg_vocab_dirs]
+
     gold = get_gold_data(test_file)
-    assert all([set(arg_preds.keys()) == set(entry.keys()) for entry in trig_pred_dict.values()])
+
+    for arg_pred_entry in arg_pred_dict.values():
+        assert all([set(arg_pred_entry.keys()) == set(entry.keys()) for entry in trig_pred_dict.values()])
+
     trig_preds = unwrap(trig_pred_dict)
+    arg_preds = unwrap(arg_pred_dict)
     with open(output_file, "w") as f:
         for doc in trig_preds:
-            one_pred = predict_one(trig_preds[doc], arg_preds[doc], gold[doc], trigger_vocabs, arg_vocab)
+            one_pred = predict_one(trig_preds[doc], arg_preds[doc], gold[doc], trigger_vocabs, arg_vocabs)
             f.write(one_pred + "\n")
 
 
@@ -154,12 +160,14 @@ def main():
     trigger_vocab_dirs = [f"{ensemble_dir}/triger_ensemble_seed_{trigger_seed}_{k}/vocabulary"
                           for k in [0, 1, 2, 3]]
 
-    arg_dir = f"{ensemble_dir}/events_seed_{arg_seed}/prediction_scores_test"
-    arg_vocab_dir = f"{ensemble_dir}/events_seed_{arg_seed}/vocabulary"
+    arg_dirs = {k: f"{ensemble_dir}/args_ensemble_{k}/prediction_scores_test"
+                for k in [0, 1, 2, 3]}
+    arg_vocab_dirs = [f"{ensemble_dir}/args_ensemble_{k}/vocabulary"
+                      for k in [0, 1, 2, 3]]
 
     test_file = "/data/dwadden/proj/dygie/dygie-experiments/datasets/ace-event-tongtao-settings/json/test.json"
     output_file = path.join(out_dir, f"predictions_trig_{trigger_seed}_arg_{arg_seed}.json")
-    predict_from_ensemble(trigger_dirs, trigger_vocab_dirs, arg_dir, arg_vocab_dir, test_file, output_file)
+    predict_from_ensemble(trigger_dirs, trigger_vocab_dirs, arg_dirs, arg_vocab_dirs, test_file, output_file)
 
 
 if __name__ == '__main__':
