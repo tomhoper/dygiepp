@@ -54,7 +54,7 @@ def decode_trigger(outputs, trigger_vocabs):
     return trigger_dict
 
 
-def decode_arguments(outputs, decoded_trig, vocabs):
+def decode_one_argument(output, decoded_trig, vocab):
     argument_dict = {}
     argument_dict_with_scores = {}
     the_highest, _ = output["argument_scores"].max(dim=0)
@@ -73,6 +73,41 @@ def decode_arguments(outputs, decoded_trig, vocabs):
             argument_dict_with_scores[(trig_ix, arg_span)] = (label_name, arg_score)
 
     return argument_dict, argument_dict_with_scores
+
+
+def majority_vote(argument_dicts, argument_dicts_with_scores):
+    # Keep an argument if at least 2 folds had it.
+    counts = Counter()
+    argument_tupss = [[(k, v) for k, v in entry.items()] for entry in argument_dicts]
+
+    argument_scores = [[(k, v) for k, v in entry.items()] for entry in argument_dicts_with_scores]
+
+    for arg_tups in argument_tupss:
+        for arg_tup in arg_tups:
+            counts[arg_tup] += 1
+
+    keep = [k for k, v in counts.items() if v > 1]
+    argument_dict = dict(keep)
+
+    # Just set all the scores to 1 to get this done.
+    argument_dict_with_scores = {k: (v, 1.0) for k, v in argument_dict.items()}
+
+    return argument_dict, argument_dict_with_scores
+
+
+def decode_arguments(outputs, decoded_trig, vocabs):
+    decoded = [decode_one_argument(output, decoded_trig, vocab)
+               for output, vocab in zip(outputs, vocabs)]
+
+    argument_dicts = [x[0] for x in decoded]
+    argument_dicts_with_scores = [x[1] for x in decoded]
+
+    if not decoded_trig:
+        return decoded[0]
+    else:
+        argument_dict, argument_dict_with_scores = majority_vote(argument_dicts,
+                                                                 argument_dicts_with_scores)
+        return argument_dict, argument_dict_with_scores
 
 
 def decode(trig_list, arg_list, trigger_vocabs, arg_vocabs):
@@ -170,7 +205,7 @@ def main():
                       for k in [0, 1, 2, 3]]
 
     test_file = "/data/dwadden/proj/dygie/dygie-experiments/datasets/ace-event-tongtao-settings/json/test.json"
-    output_file = path.join(out_dir, f"predictions_trig_{trigger_seed}.json")
+    output_file = path.join(out_dir, f"arg_predictions_{trigger_seed}.json")
     predict_from_ensemble(trigger_dirs, trigger_vocab_dirs, arg_dirs, arg_vocab_dirs, test_file, output_file)
 
 
