@@ -54,7 +54,7 @@ def decode_trigger(outputs, trigger_vocabs):
     return trigger_dict
 
 
-def decode_arguments(output, decoded_trig, vocab):
+def decode_arguments(outputs, decoded_trig, vocabs):
     argument_dict = {}
     argument_dict_with_scores = {}
     the_highest, _ = output["argument_scores"].max(dim=0)
@@ -75,22 +75,25 @@ def decode_arguments(output, decoded_trig, vocab):
     return argument_dict, argument_dict_with_scores
 
 
-def decode(trig_list, arg_dict, trigger_vocabs, arg_vocab):
+def decode(trig_list, arg_list, trigger_vocabs, arg_vocabs):
     """
     Largely copy-pasted from what happens in dygie.
     """
     ignore = ["loss", "decoded_events"]
-    trigs = [fields_to_batches({k: v.detach().cpu() for k, v in entry.items() if k not in ignore})
+    trigss = [fields_to_batches({k: v.detach().cpu() for k, v in entry.items() if k not in ignore})
              for entry in trig_list]
-    trigs = list(zip(*trigs))
-    args = fields_to_batches({k: v.detach().cpu() for k, v in arg_dict.items() if k not in ignore})
+    trigss = list(zip(*trigss))
+
+    argss = [fields_to_batches({k: v.detach().cpu() for k, v in entry.items() if k not in ignore})
+            for entry in arg_list]
+    argss = list(zip(*argss))
 
     res = []
 
     # Collect predictions for each sentence in minibatch.
-    for trigs, arg in zip(trigs, args):
+    for trigs, args in zip(trigss, argss):
         decoded_trig = decode_trigger(trigs, trigger_vocabs)
-        decoded_args, decoded_args_with_scores = decode_arguments(arg, decoded_trig, arg_vocab)
+        decoded_args, decoded_args_with_scores = decode_arguments(args, decoded_trig, arg_vocabs)
         entry = dict(trigger_dict=decoded_trig, argument_dict=decoded_args,
                      argument_dict_with_scores=decoded_args_with_scores)
         res.append(entry)
@@ -107,12 +110,14 @@ def get_pred_dicts(pred_dir):
     return res
 
 
-def predict_one(trig, arg, gold, trigger_vocabs, arg_vocab):
+def predict_one(trig, arg, gold, trigger_vocabs, arg_vocabs):
     sentence_lengths = [len(entry) for entry in gold["sentences"]]
     sentence_starts = np.cumsum(sentence_lengths)
     sentence_starts = np.roll(sentence_starts, 1)
     sentence_starts[0] = 0
-    decoded = decode([x["events"] for x in trig], arg["events"], trigger_vocabs, arg_vocab)
+
+    decoded = decode([x["events"] for x in trig], [x["events"] for x in arg],
+                     trigger_vocabs, arg_vocabs)
     cleaned = pdy.cleanup_event(decoded, sentence_starts)
     res = {}
     res.update(gold)
@@ -153,7 +158,6 @@ def main():
     ensemble_dir = argv[1]
     out_dir = argv[2]
     trigger_seed = int(argv[3])
-    arg_seed = int(argv[4])
 
     trigger_dirs = {k: f"{ensemble_dir}/triger_ensemble_seed_{trigger_seed}_{k}/prediction_scores_test"
                     for k in [0, 1, 2, 3]}
@@ -166,7 +170,7 @@ def main():
                       for k in [0, 1, 2, 3]]
 
     test_file = "/data/dwadden/proj/dygie/dygie-experiments/datasets/ace-event-tongtao-settings/json/test.json"
-    output_file = path.join(out_dir, f"predictions_trig_{trigger_seed}_arg_{arg_seed}.json")
+    output_file = path.join(out_dir, f"predictions_trig_{trigger_seed}.json")
     predict_from_ensemble(trigger_dirs, trigger_vocab_dirs, arg_dirs, arg_vocab_dirs, test_file, output_file)
 
 
