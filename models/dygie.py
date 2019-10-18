@@ -194,10 +194,10 @@ class DyGIE(Model):
         for i in range(len(new_text_embeddings)):
             new_text_embeddings[i][0:metadata[i]["end_ix"] - metadata[i]["start_ix"]] = text_embeddings[i][metadata[i]["start_ix"]:metadata[i]["end_ix"]]
 
-        #max_sent_len = max(sentence_lengths)
-        #the_list = [list(k+metadata[i]["start_ix"] if k < max_sent_len else 0 for k in range(text_embeddings.shape[1])) for i in range(len(metadata))]
-        #import ipdb; ipdb.set_trace()
-        #text_embeddings = torch.gather(text_embeddings, 1, torch.tensor(the_list, device=text_embeddings.device).unsqueeze(2).repeat(1, 1, text_embeddings.shape[2]))
+        # max_sent_len = max(sentence_lengths)
+        # the_list = [list(k+metadata[i]["start_ix"] if k < max_sent_len else 0 for k in range(text_embeddings.shape[1])) for i in range(len(metadata))]
+        # import ipdb; ipdb.set_trace()
+        # text_embeddings = torch.gather(text_embeddings, 1, torch.tensor(the_list, device=text_embeddings.device).unsqueeze(2).repeat(1, 1, text_embeddings.shape[2]))
         text_embeddings = new_text_embeddings
 
         # Only keep the text embeddings that correspond to actual tokens.
@@ -234,7 +234,7 @@ class DyGIE(Model):
             span_embeddings = endpoint_span_embeddings
 
         # TODO(Ulme) try normalizing span embeddeings
-        #span_embeddings = span_embeddings.abs().sum(dim=-1).unsqueeze(-1)
+        # span_embeddings = span_embeddings.abs().sum(dim=-1).unsqueeze(-1)
 
         # Make calls out to the modules to get results.
         output_coref = {'loss': 0}
