@@ -3,9 +3,6 @@
 function(p) {
   local getattr(obj, attrname, default) = if attrname in obj then p[attrname] else default,
 
-  // Location of ACE valid event configs
-  local valid_events_dir = std.extVar("valid_events_dir"),
-
   // Storing constants.
 
   local event_validation_metric = (if "event_validation_metric" in p
@@ -237,7 +234,8 @@ function(p) {
     type: "ie_json",
     token_indexers: token_indexers,
     max_span_width: p.max_span_width,
-    context_width: p.context_width
+    context_width: p.context_width,
+    debug: getattr(p, "debug", false),
   },
   train_data_path: std.extVar("ie_train_data_path"),
   validation_data_path: std.extVar("ie_dev_data_path"),
@@ -257,7 +255,6 @@ function(p) {
     use_attentive_span_extractor: p.use_attentive_span_extractor,
     max_span_width: p.max_span_width,
     display_metrics: display_metrics[p.target],
-    valid_events_dir: valid_events_dir,
     context_layer: context_layer,
     co_train: co_train,
     modules: {
@@ -334,7 +331,7 @@ function(p) {
     [if "instances_per_epoch" in p then "instances_per_epoch"]: p.instances_per_epoch
   },
   validation_iterator: {
-    type: "ie_batch",
+    type: "ie_document",
     batch_size: p.batch_size
   },
   trainer: {

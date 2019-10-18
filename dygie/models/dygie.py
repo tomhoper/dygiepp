@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from overrides import overrides
 
 from allennlp.data import Vocabulary
+from allennlp.common.params import Params
 from allennlp.models.model import Model
 from allennlp.modules import Seq2SeqEncoder, TextFieldEmbedder, FeedForward
 from allennlp.modules.span_extractors import SelfAttentiveSpanExtractor, EndpointSpanExtractor
@@ -64,16 +65,17 @@ class DyGIE(Model):
                  co_train: bool = False,
                  initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None,
-                 display_metrics: List[str] = None,
-                 valid_events_dir: str = None) -> None:
+                 display_metrics: List[str] = None) -> None:
         super(DyGIE, self).__init__(vocab, regularizer)
 
         self._text_field_embedder = text_field_embedder
         self._context_layer = context_layer
 
-        self._loss_weights = loss_weights.as_dict()
+        self._loss_weights = loss_weights
         self._permanent_loss_weights = copy.deepcopy(self._loss_weights)
 
+        # Need to add this line so things don't break. TODO(dwadden) sort out what's happening.
+        modules = Params(modules)
         self._coref = CorefResolver.from_params(vocab=vocab,
                                                 feature_size=feature_size,
                                                 params=modules.pop("coref"))
@@ -101,11 +103,6 @@ class DyGIE(Model):
             self._attentive_span_extractor = None
 
         self._max_span_width = max_span_width
-
-        # Read valid event configurations.
-        if self._loss_weights["ner"] > 0 and self._loss_weights["events"] > 0:
-            self._valid_events = self._read_valid_events(valid_events_dir)
-            self._joint_metrics = JointMetrics(self._valid_events)
 
         self._display_metrics = display_metrics
 
@@ -399,19 +396,3 @@ class DyGIE(Model):
                 new_k = "_" + k
                 res[new_k] = v
         return res
-
-    @staticmethod
-    def _read_valid_events(valid_events_dir):
-        """
-        Load in the list of valid trigger / arg and ner / arg mappings.
-        """
-        ner_to_arg = []
-        with open(path.join(valid_events_dir, "ner-to-arg.csv"), "r") as f:
-            for line in f:
-                ner_to_arg.append(tuple(line.strip().split(",")))
-        trigger_to_arg = []
-        with open(path.join(valid_events_dir, "trigger-to-arg.csv"), "r") as g:
-            for line in g:
-                trigger_to_arg.append(tuple(line.strip().split(",")))
-        return {"ner_to_arg": set(ner_to_arg),
-                "trigger_to_arg": set(trigger_to_arg)}
