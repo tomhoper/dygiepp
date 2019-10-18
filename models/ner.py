@@ -44,10 +44,8 @@ class NERTagger(Model):
         # Number of classes determine the output dimension of the final layer
         self._n_labels = vocab.get_vocab_size('ner_labels')
 
-        # TODO(dwadden) think of a better way to enforce this.
         # Null label is needed to keep track of when calculating the metrics
         null_label = vocab.get_token_index("", "ner_labels")
-        assert null_label == 0  # If not, the dummy class won't correspond to the null label.
 
         self._ner_scorer = torch.nn.Sequential(
             TimeDistributed(mention_feedforward),
@@ -91,6 +89,7 @@ class NERTagger(Model):
                        "ner_scores": ner_scores,
                        "predicted_ner": predicted_ner}
 
+        # Compute metrics if we have the gold ner_labels
         if ner_labels is not None:
             self._ner_metrics(predicted_ner, ner_labels, span_mask)
             ner_scores_flat = ner_scores.view(-1, self._n_labels)
