@@ -117,6 +117,8 @@ class NERTagger(Model):
             entry_dict = {}
             for span, ner in zip(spans[span_mask], predicted_NERs[span_mask]):
                 ner = ner.item()
+                # TODO(ulme) I think there is an implicit assumption here that null label is =0.
+                # Fix this
                 if ner > 0:
                     the_span = (span[0].item(), span[1].item())
                     the_label = self.vocab.get_token_from_index(ner, "ner_labels")
