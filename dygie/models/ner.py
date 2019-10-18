@@ -44,10 +44,8 @@ class NERTagger(Model):
         # Number of classes determine the output dimension of the final layer
         self._n_labels = vocab.get_vocab_size('ner_labels')
 
-        # TODO(dwadden) think of a better way to enforce this.
         # Null label is needed to keep track of when calculating the metrics
-        null_label = vocab.get_token_index("", "ner_labels")
-        assert null_label == 0  # If not, the dummy class won't correspond to the null label.
+        self.null_label = vocab.get_token_index("", "ner_labels")
 
         self._ner_scorer = torch.nn.Sequential(
             TimeDistributed(mention_feedforward),
@@ -55,7 +53,7 @@ class NERTagger(Model):
                 mention_feedforward.get_output_dim(),
                 self._n_labels - 1)))
 
-        self._ner_metrics = NERMetrics(self._n_labels, null_label)
+        self._ner_metrics = NERMetrics(self._n_labels, self.null_label)
 
         self._loss = torch.nn.CrossEntropyLoss(reduction="sum")
 
@@ -91,6 +89,7 @@ class NERTagger(Model):
                        "ner_scores": ner_scores,
                        "predicted_ner": predicted_ner}
 
+        # Compute metrics if we have the gold ner_labels
         if ner_labels is not None:
             self._ner_metrics(predicted_ner, ner_labels, span_mask)
             ner_scores_flat = ner_scores.view(-1, self._n_labels)
@@ -118,7 +117,7 @@ class NERTagger(Model):
             entry_dict = {}
             for span, ner in zip(spans[span_mask], predicted_NERs[span_mask]):
                 ner = ner.item()
-                if ner > 0:
+                if ner != self.null_label:
                     the_span = (span[0].item(), span[1].item())
                     the_label = self.vocab.get_token_from_index(ner, "ner_labels")
                     entry_list.append((the_span[0], the_span[1], the_label))
