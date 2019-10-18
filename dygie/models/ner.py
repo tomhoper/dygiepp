@@ -45,7 +45,7 @@ class NERTagger(Model):
         self._n_labels = vocab.get_vocab_size('ner_labels')
 
         # Null label is needed to keep track of when calculating the metrics
-        null_label = vocab.get_token_index("", "ner_labels")
+        self.null_label = vocab.get_token_index("", "ner_labels")
 
         self._ner_scorer = torch.nn.Sequential(
             TimeDistributed(mention_feedforward),
@@ -53,7 +53,7 @@ class NERTagger(Model):
                 mention_feedforward.get_output_dim(),
                 self._n_labels - 1)))
 
-        self._ner_metrics = NERMetrics(self._n_labels, null_label)
+        self._ner_metrics = NERMetrics(self._n_labels, self.null_label)
 
         self._loss = torch.nn.CrossEntropyLoss(reduction="sum")
 
@@ -117,9 +117,7 @@ class NERTagger(Model):
             entry_dict = {}
             for span, ner in zip(spans[span_mask], predicted_NERs[span_mask]):
                 ner = ner.item()
-                # TODO(ulme) I think there is an implicit assumption here that null label is =0.
-                # Fix this
-                if ner > 0:
+                if ner != self.null_label:
                     the_span = (span[0].item(), span[1].item())
                     the_label = self.vocab.get_token_from_index(ner, "ner_labels")
                     entry_list.append((the_span[0], the_span[1], the_label))
