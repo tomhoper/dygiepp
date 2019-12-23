@@ -17,7 +17,6 @@ local params = {
   use_glove: true,
   use_char: true,
   use_elmo: true,
-  use_attentive_span_extractor: false,
 
   // Specifies the model parameters.
   lstm_hidden_size: 300,

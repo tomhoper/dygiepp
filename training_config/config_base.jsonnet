@@ -21,7 +21,6 @@ local params = {
   use_glove: false,
   use_char: false,
   use_elmo: false,
-  use_attentive_span_extractor: false,
   use_bert_base: false,
   use_bert_large: true,
   finetune_bert: false,

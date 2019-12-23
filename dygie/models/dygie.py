@@ -1,4 +1,3 @@
-from os import path
 import logging
 from typing import Dict, List, Optional
 import copy
@@ -10,8 +9,8 @@ from overrides import overrides
 from allennlp.data import Vocabulary
 from allennlp.common.params import Params
 from allennlp.models.model import Model
-from allennlp.modules import Seq2SeqEncoder, TextFieldEmbedder, FeedForward
-from allennlp.modules.span_extractors import SelfAttentiveSpanExtractor, EndpointSpanExtractor
+from allennlp.modules import Seq2SeqEncoder, TextFieldEmbedder
+from allennlp.modules.span_extractors import EndpointSpanExtractor
 from allennlp.nn import util, InitializerApplicator, RegularizerApplicator
 
 # Import submodules.
@@ -19,7 +18,6 @@ from dygie.models.coref import CorefResolver
 from dygie.models.ner import NERTagger
 from dygie.models.relation import RelationExtractor
 from dygie.models.events import EventExtractor
-from dygie.training.joint_metrics import JointMetrics
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -61,7 +59,6 @@ class DyGIE(Model):
                  loss_weights: Dict[str, int],
                  lexical_dropout: float = 0.2,
                  lstm_dropout: float = 0.4,
-                 use_attentive_span_extractor: bool = False,
                  co_train: bool = False,
                  initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None,
@@ -96,12 +93,6 @@ class DyGIE(Model):
                                                               num_width_embeddings=max_span_width,
                                                               span_width_embedding_dim=feature_size,
                                                               bucket_widths=False)
-        if use_attentive_span_extractor:
-            self._attentive_span_extractor = SelfAttentiveSpanExtractor(
-                input_dim=text_field_embedder.get_output_dim())
-        else:
-            self._attentive_span_extractor = None
-
         self._max_span_width = max_span_width
 
         self._display_metrics = display_metrics
@@ -205,10 +196,6 @@ class DyGIE(Model):
         contextualized_embeddings = self._lstm_dropout(self._context_layer(text_embeddings, text_mask))
         assert spans.max() < contextualized_embeddings.shape[1]
 
-        if self._attentive_span_extractor is not None:
-            # Shape: (batch_size, num_spans, emebedding_size)
-            attended_span_embeddings = self._attentive_span_extractor(text_embeddings, spans)
-
         # Shape: (batch_size, num_spans)
         span_mask = (spans[:, :, 0] >= 0).float()
         # SpanFields return -1 when they are used as padding. As we do
@@ -222,13 +209,7 @@ class DyGIE(Model):
         spans = F.relu(spans.float()).long()
 
         # Shape: (batch_size, num_spans, 2 * encoding_dim + feature_size)
-        endpoint_span_embeddings = self._endpoint_span_extractor(contextualized_embeddings, spans)
-
-        if self._attentive_span_extractor is not None:
-            # Shape: (batch_size, num_spans, emebedding_size + 2 * encoding_dim + feature_size)
-            span_embeddings = torch.cat([endpoint_span_embeddings, attended_span_embeddings], -1)
-        else:
-            span_embeddings = endpoint_span_embeddings
+        span_embeddings = self._endpoint_span_extractor(contextualized_embeddings, spans)
 
         # TODO(Ulme) try normalizing span embeddeings
         #span_embeddings = span_embeddings.abs().sum(dim=-1).unsqueeze(-1)

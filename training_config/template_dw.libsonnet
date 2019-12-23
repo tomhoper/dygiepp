@@ -74,8 +74,7 @@ function(p) {
     then token_embedding_dim
     else 2 * p.lstm_hidden_size),
   local endpoint_span_emb_dim = 2 * context_layer_output_size + p.feature_size,
-  local attended_span_emb_dim = if p.use_attentive_span_extractor then token_embedding_dim else 0,
-  local span_emb_dim = endpoint_span_emb_dim + attended_span_emb_dim,
+  local span_emb_dim = endpoint_span_emb_dim,
   local pair_emb_dim = 3 * span_emb_dim,
   local relation_scorer_dim = pair_emb_dim,
   local coref_scorer_dim = pair_emb_dim + p.feature_size,
@@ -261,7 +260,6 @@ function(p) {
     lexical_dropout: p.lexical_dropout,
     lstm_dropout: (if p.finetune_bert then 0 else p.lstm_dropout),
     feature_size: p.feature_size,
-    use_attentive_span_extractor: p.use_attentive_span_extractor,
     max_span_width: p.max_span_width,
     display_metrics: display_metrics[p.target],
     context_layer: context_layer,
