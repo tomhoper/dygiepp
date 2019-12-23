@@ -137,20 +137,15 @@ class DyGIE(Model):
         relation_labels = relation_labels.long()
         argument_labels = argument_labels.long()
 
-        # If we're doing Bert, get the sentence class token as part of the text embedding. This will
-        # break if we use Bert together with other embeddings, but that won't happen much.
-        if "bert-offsets" in text:
-            offsets = text["bert-offsets"]
-            sent_ix = torch.zeros(offsets.size(0), device=offsets.device, dtype=torch.long).unsqueeze(1)
-            padded_offsets = torch.cat([sent_ix, offsets], dim=1)
-            text["bert-offsets"] = padded_offsets
-            padded_embeddings = self._text_field_embedder(text)
-            cls_embeddings = padded_embeddings[:, 0, :]
-            text_embeddings = padded_embeddings[:, 1:, :]
-        else:
-            text_embeddings = self._text_field_embedder(text)
-            cls_embeddings = torch.zeros([text_embeddings.size(0), text_embeddings.size(2)],
-                                         device=text_embeddings.device)
+        # Deal with BERT offsets and indexing.
+        assert "bert-offsets" in text
+        offsets = text["bert-offsets"]
+        sent_ix = torch.zeros(offsets.size(0), device=offsets.device, dtype=torch.long).unsqueeze(1)
+        padded_offsets = torch.cat([sent_ix, offsets], dim=1)
+        text["bert-offsets"] = padded_offsets
+        padded_embeddings = self._text_field_embedder(text)
+        cls_embeddings = padded_embeddings[:, 0, :]
+        text_embeddings = padded_embeddings[:, 1:, :]
 
         text_embeddings = self._lexical_dropout(text_embeddings)
 

@@ -18,9 +18,6 @@ local params = {
   debug: false,
 
   // Specifies the token-level features that will be created.
-  use_glove: false,
-  use_char: false,
-  use_elmo: false,
   use_bert_base: false,
   use_bert_large: true,
   finetune_bert: false,
@@ -31,7 +28,6 @@ local params = {
   lstm_n_layers: 1,
   feature_size: 20,
   feedforward_layers: 2,
-  char_n_filters: 50,
   feedforward_dim: 600,
   max_span_width: 12,
   feedforward_dropout: 0.4,

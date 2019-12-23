@@ -23,8 +23,6 @@ function(p) {
     "events": ["trig_class_f1", "arg_class_f1"]
   },
 
-  local glove_dim = 300,
-  local elmo_dim = 1024,
   local bert_base_dim = 768,
   local bert_large_dim = 1024,
   local scibert_dim = 768,
@@ -44,11 +42,6 @@ function(p) {
 
   // Helper function.
   // Calculating dimensions.
-  local use_bert = (if p.use_bert_base then true
-                    else if p.use_bert_large then true
-                    else if p.use_scibert then true
-                    else false),
-
   local event_n_span_prop = getattr(p, "event_n_span_prop", 0),
 
   // If true, use ner and trigger labels as features to predict event arguments.
@@ -63,12 +56,10 @@ function(p) {
   local shared_attention_context = getattr(p, "shared_attention_context", false),
   local trigger_attention_context = getattr(p, "trigger_attention_context", false),
 
-  local token_embedding_dim = ((if p.use_glove then glove_dim else 0) +
-    (if p.use_char then p.char_n_filters else 0) +
-    (if p.use_elmo then elmo_dim else 0) +
-    (if p.use_bert_base then bert_base_dim else 0) +
+  local token_embedding_dim = ((if p.use_bert_base then bert_base_dim else 0) +
     (if p.use_bert_large then bert_large_dim else 0) +
     (if p.use_scibert then scibert_dim else 0)),
+
   // If we're using Bert, no LSTM. We just pass the token embeddings right through.
   local context_layer_output_size = (if p.finetune_bert
     then token_embedding_dim
@@ -123,18 +114,7 @@ function(p) {
   // Model components
 
   local token_indexers = {
-    [if p.use_glove then "tokens"]: {
-      type: "single_id",
-      lowercase_tokens: false
-    },
-    [if p.use_char then "token_characters"]: {
-      type: "characters",
-      min_padding_length: 5
-    },
-    [if p.use_elmo then "elmo"]: {
-      type: "elmo_characters"
-    },
-    [if use_bert then "bert"]: {
+    "bert": {
       type: "bert-pretrained",
       pretrained_model: (if p.use_bert_base then "bert-base-cased"
                          else if p.use_bert_large then "bert-large-cased"
@@ -145,39 +125,13 @@ function(p) {
   },
 
   local text_field_embedder = {
-    [if use_bert then "allow_unmatched_keys"]: true,
-    [if use_bert then "embedder_to_indexer_map"]: {
+    "allow_unmatched_keys": true,
+    "embedder_to_indexer_map": {
       bert: ["bert", "bert-offsets"],
       token_characters: ["token_characters"]
     },
     token_embedders: {
-      [if p.use_glove then "tokens"]: {
-        type: "embedding",
-        pretrained_file: if p.debug then null else "https://s3-us-west-2.amazonaws.com/allennlp/datasets/glove/glove.840B.300d.txt.gz",
-        embedding_dim: 300,
-        trainable: false
-      },
-      [if p.use_char then "token_characters"]: {
-        type: "character_encoding",
-        embedding: {
-          num_embeddings: 262,
-          embedding_dim: 16
-        },
-        encoder: {
-          type: "cnn",
-          embedding_dim: 16,
-          num_filters: p.char_n_filters,
-          ngram_filter_sizes: [5]
-        }
-      },
-      [if p.use_elmo then "elmo"]: {
-        type: "elmo_token_embedder",
-        options_file: "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json",
-        weight_file: "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
-        do_layer_norm: false,
-        dropout: 0.5
-      },
-      [if use_bert then "bert"]: {
+      "bert": {
         type: "bert-pretrained",
         pretrained_model: (if p.use_bert_base then "bert-base-cased"
                            else if p.use_bert_large then "bert-large-cased"
