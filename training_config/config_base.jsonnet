@@ -52,7 +52,6 @@ local params = {
   coref_spans_per_word: 0.4,
   coref_max_antecedents: 100,
   coref_prop: 0,
-  co_train: false,
 
   // Relation settings.
   relation_spans_per_word: 0.4,

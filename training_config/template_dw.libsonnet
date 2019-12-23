@@ -108,9 +108,6 @@ function(p) {
     (if shared_attention_context then trigger_emb_dim else 0) +
     class_projection_dim),
 
-  // Co-training
-  local co_train = if "co_train" in p then p.co_train else false,
-
   ////////////////////////////////////////////////////////////////////////////////
 
   // Function definitions
@@ -211,20 +208,14 @@ function(p) {
   ),
 
   // Not using these.
-  local iterator = if co_train then {
-    type: "ie_multitask",
-    batch_size: p.batch_size,
-    [if "instances_per_epoch" in p then "instances_per_epoch"]: p.instances_per_epoch
-  } else {
+  local iterator = {
     type: "bucket",
     sorting_keys: [["text", "num_tokens"]],
     batch_size : p.batch_size,
     [if "instances_per_epoch" in p then "instances_per_epoch"]: p.instances_per_epoch
   },
 
-  local validation_iterator = if co_train then {
-    type: "ie_document"
-  } else {
+  local validation_iterator = {
     type: "bucket",
     sorting_keys: [["text", "num_tokens"]],
     batch_size : p.batch_size
@@ -263,7 +254,6 @@ function(p) {
     max_span_width: p.max_span_width,
     display_metrics: display_metrics[p.target],
     context_layer: context_layer,
-    co_train: co_train,
     modules: {
       coref: {
         spans_per_word: p.coref_spans_per_word,
@@ -333,7 +323,7 @@ function(p) {
     }
   },
   iterator: {
-    type: if co_train then "ie_multitask" else "ie_batch",
+    type: "ie_batch",
     batch_size: p.batch_size,
     [if "instances_per_epoch" in p then "instances_per_epoch"]: p.instances_per_epoch
   },
