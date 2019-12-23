@@ -20,13 +20,12 @@ class NERTagger(Model):
 
     Parameters
     ----------
+    vocab: ``Vocabulary``
     mention_feedforward : ``FeedForward``
-        This feedforward network is applied to the span representations which is then scored
-        by a linear layer.
+        This feedforward network is applied to the span representations which is then scored by a
+        linear layer.
     feature_size: ``int``
         The embedding size for all the embedded features, such as distances or span widths.
-    lexical_dropout: ``int``
-        The probability of dropping out dimensions of the embedded text.
     initializer : ``InitializerApplicator``, optional (default=``InitializerApplicator()``)
         Used to initialize the model parameters.
     regularizer : ``RegularizerApplicator``, optional (default=``None``)
@@ -44,7 +43,6 @@ class NERTagger(Model):
         # Number of classes determine the output dimension of the final layer
         self._n_labels = vocab.get_vocab_size('ner_labels')
 
-        # TODO(dwadden) think of a better way to enforce this.
         # Null label is needed to keep track of when calculating the metrics
         null_label = vocab.get_token_index("", "ner_labels")
         assert null_label == 0  # If not, the dummy class won't correspond to the null label.
@@ -71,12 +69,12 @@ class NERTagger(Model):
                 metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
 
         """
-        TODO(dwadden) Write documentation.
+        Make NER predictions.
         """
-
         # Shape: (Batch size, Number of Spans, Span Embedding Size)
         # span_embeddings
         ner_scores = self._ner_scorer(span_embeddings)
+
         # Give large negative scores to masked-out elements.
         mask = span_mask.unsqueeze(-1)
         ner_scores = util.replace_masked_values(ner_scores, mask, -1e20)
@@ -91,6 +89,7 @@ class NERTagger(Model):
                        "ner_scores": ner_scores,
                        "predicted_ner": predicted_ner}
 
+        # Compute metrics if relevant.
         if ner_labels is not None:
             self._ner_metrics(predicted_ner, ner_labels, span_mask)
             ner_scores_flat = ner_scores.view(-1, self._n_labels)
@@ -107,6 +106,10 @@ class NERTagger(Model):
 
     @overrides
     def decode(self, output_dict: Dict[str, torch.Tensor]):
+        """
+        Decode NER predictions by mapping back to the indices of the spans and the string NER
+        labels.
+        """
         predicted_ner_batch = output_dict["predicted_ner"].detach().cpu()
         spans_batch = output_dict["spans"].detach().cpu()
         span_mask_batch = output_dict["span_mask"].detach().cpu().bool()
@@ -132,6 +135,7 @@ class NERTagger(Model):
 
     @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
+        "Call out to NER metrics class."
         ner_precision, ner_recall, ner_f1 = self._ner_metrics.get_metric(reset)
         return {"ner_precision": ner_precision,
                 "ner_recall": ner_recall,

@@ -1,5 +1,4 @@
 import logging
-from os import path
 import itertools
 from typing import Any, Dict, List, Optional
 
@@ -15,7 +14,6 @@ from allennlp.modules import TimeDistributed
 from allennlp.modules.token_embedders import Embedding
 from allennlp.modules.matrix_attention.bilinear_matrix_attention import BilinearMatrixAttention
 
-from dygie.training.relation_metrics import RelationMetrics, CandidateRecall
 from dygie.training.event_metrics import EventMetrics, ArgumentStats
 from dygie.models.shared import fields_to_batches
 from dygie.models.one_hot import make_embedder

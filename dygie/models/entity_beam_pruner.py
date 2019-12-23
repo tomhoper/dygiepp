@@ -42,7 +42,10 @@ class Pruner(torch.nn.Module):
     min_score_to_keep : float, optional.
         If given, only keep items that score at least this high.
     """
-    def __init__(self, scorer: torch.nn.Module, entity_beam: bool = False, gold_beam: bool = False,
+    def __init__(self,
+                 scorer: torch.nn.Module,
+                 entity_beam: bool = False,
+                 gold_beam: bool = False,
                  min_score_to_keep: float = None) -> None:
         super().__init__()
         # If gold beam is on, then entity beam must be off and min_score_to_keep must be None.
@@ -53,7 +56,7 @@ class Pruner(torch.nn.Module):
         self._min_score_to_keep = min_score_to_keep
 
     @overrides
-    def forward(self, # pylint: disable=arguments-differ
+    def forward(self,  # pylint: disable=arguments-differ
                 embeddings: torch.FloatTensor,
                 mask: torch.LongTensor,
                 num_items_to_keep: Union[int, torch.LongTensor],
