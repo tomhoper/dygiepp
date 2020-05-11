@@ -60,6 +60,8 @@ class DyGIEPredictor(Predictor):
         cuda_device = model._get_prediction_device()
 
         doc_keys = [entry["metadata"]["doc_key"] for entry in instance]
+        if len(set(doc_keys)) != 1:
+            import pdb; pdb.set_trace()
         assert len(set(doc_keys)) == 1
         doc_key = doc_keys[0]
 
@@ -88,6 +90,7 @@ class DyGIEPredictor(Predictor):
                     decoded_instance[k].extend(decoded[k][v])
 
         predictions = {}
+        # import pdb; pdb.set_trace()
         predictions["doc_key"] = doc_key
         predictions["sentences"] = [x["metadata"]["sentence"] for x in instance]
         for k, v in decoded_instance.items():
@@ -97,6 +100,7 @@ class DyGIEPredictor(Predictor):
             predictions[self._decode_names[k]] = self._cleanup(
                 k, v, sentence_starts)
 
+        # import pdb; pdb.set_trace()
         return predictions
 
     @staticmethod
@@ -149,7 +153,8 @@ class DyGIEPredictor(Predictor):
         for sentence, sentence_start in zip(decoded, sentence_starts):
             res_sentence = []
             for rel in sentence:
-                cleaned = [x + sentence_start for x in rel[:4]] + [rel[4]]
+                # import pdb; pdb.set_trace()
+                cleaned = [x + sentence_start for x in rel[:4]] + [rel[4]]+ [float(rel[5])]
                 res_sentence.append(cleaned)
             res.append(res_sentence)
         return res
