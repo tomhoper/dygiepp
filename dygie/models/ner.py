@@ -118,26 +118,27 @@ class NERTagger(Model):
 
     def _mask_irrelevant_labels(self, ner_scores, metadata):
         """
-        Mask out the NER scores for classes from different datasets.
+        Mask out the NER scores for classes from different datasets. For the `covid` self-training data,.
         """
         if not shared.is_seed_datasets(metadata):
             return ner_scores
 
         datasets = pd.Series([x["doc_key"].split(":")[0] for x in metadata]).values
         datasets = np.expand_dims(datasets, 1)
+
         # The null label is the first class.
         indices = pd.Series(self.vocab.get_index_to_token_vocabulary("ner_labels"))
         indices = indices.str.split(":").str[0].values
         indices = np.expand_dims(indices, 0)
         # When mask == 1, we keep the score. When mask == 0, we ignore it.
-        mask = datasets == indices
+        # For self-traning data, keep all the classes.
+        mask = (datasets == indices) | (datasets == "self-train")
         mask[:, 0] = True  # Always keep the null label.
         mask = mask.astype(np.float32)
         mask = torch.from_numpy(mask)
         mask = mask.unsqueeze(1).to(ner_scores.device)
         masked_scores = util.replace_masked_values(ner_scores, mask, -1e20)
         return masked_scores
-
 
     @overrides
     def decode(self, output_dict: Dict[str, torch.Tensor]):
@@ -167,6 +168,9 @@ class NERTagger(Model):
         return output_dict
 
     def _decode_regular(self, predicted_ner_batch, spans_batch, span_mask_batch):
+        """
+        When predicting on seed data, just make a single best prediction.
+        """
         res_list = []
         res_dict = []
         for spans, span_mask, predicted_NERs in zip(spans_batch, span_mask_batch, predicted_ner_batch):
@@ -185,6 +189,9 @@ class NERTagger(Model):
         return res_list, res_dict
 
     def _decode_cord(self, ner_scores_batch, spans_batch, span_mask_batch):
+        """
+        When predicting on unseen data, make predictions from each label class.
+        """
         indices = pd.Series(self.vocab.get_index_to_token_vocabulary("ner_labels"))
         datasets = indices.str.split(":").str[0].values
         uniq_datasets = np.unique(datasets)

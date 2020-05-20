@@ -198,9 +198,9 @@ class RelationExtractor(Model):
             # If we're training on the seed datasets, only evaluate on SciERC.
             if shared.is_seed_datasets(metadata):
                 datasets = pd.Series([x["doc_key"].split(":")[0] for x in metadata]).values
-                keep = datasets == "scierc"
+                keep = (datasets == "scierc") | (datasets == "self-train")
                 if not keep.any():
-                    # If no SciERC data, set the loss to 0 and continue.
+                    # If no SciERC or self-training data, set the loss to 0 and continue.
                     cross_entropy = torch.tensor(0).to(relation_scores.device)
                 else:
                     # Otherwise. compute the loss on the SciERC entries.
