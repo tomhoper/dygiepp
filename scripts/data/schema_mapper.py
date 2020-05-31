@@ -51,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--maptype', choices = ['mech','mech_effect'],default="mech", help='if specified, will download all files from s3 for given release date')
 
     args = parser.parse_args()
-    
+
     root_path = Path(args.dataroot)
     dataset_dir = root_path / args.dataset
     original_dir = dataset_dir / "original"
@@ -61,7 +61,8 @@ if __name__ == '__main__':
     map_path = map_dir.joinpath(map_type+".txt")
 
     schemamap = load_map_dict(map_path)   
-    original_files = [path for path in original_dir.glob('*.jsonl')]
+    original_files = list(original_dir.glob('*.jsonl'))
+    original_files.extend(list(original_dir.glob('*.json')))
 
     print("--- loading and mapping from ", original_dir)
     for fold in original_files:
