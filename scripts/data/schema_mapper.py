@@ -78,39 +78,3 @@ if __name__ == '__main__':
 
         with jsonlines.open(fold_mapped, 'w') as writer:
             writer.write_all(new_jsons)
-        
-# def read_refine_labels(data_path, filename, output_filename):
-#   input_file = open(data_path + filename)
-#   output_file = open(data_path + output_filename, "w")
-#   for line in input_file:
-#     data = json.loads(line)
-    
-#     #replacing ner
-#     new_ner = []
-#     for ner_list in data['ner']:
-#       new_ner_list = []
-#       for ner in ner_list:
-#         if SCIERC_NER_REPLACEMENT[ner[2]] != -1:
-#           ner[2] = SCIERC_NER_REPLACEMENT[ner[2]]
-#           new_ner_list.append(ner)
-#       new_ner.append(new_ner_list)
-#     data['ner']  = new_ner
-
-#     # replacing rel
-#     new_rel = []
-#     for rel_list in data['relations']:
-#       new_rel_list = []
-#       for rel in rel_list:
-#         if SCIERC_REL_REPLACEMENT[rel[4]] != -1:
-#           rel[4] = SCIERC_REL_REPLACEMENT[rel[4]]
-#           new_rel_list.append(rel)
-#       new_rel.append(new_rel_list)
-#     data['relations']  = new_rel
-#     json.dump(data, output_file)
-#     output_file.write('\n')
-
-# def merge_data():
-#   srl_data = read_refine_labels(SCIERC_PATH, "train.scierc.jsonl", "train.scierc.unified.jsonl")
-#   srl_data = read_refine_labels(SCIERC_PATH, "dev.scierc.jsonl", "dev.scierc.unified.jsonl")
-#   srl_data = read_refine_labels(SCIERC_PATH, "test.scierc.jsonl", "test.scierc.unified.jsonl")
-# merge_data()
