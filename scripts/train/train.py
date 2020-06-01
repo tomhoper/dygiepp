@@ -23,6 +23,11 @@ if __name__ == '__main__':
                         help='root dataset folder, contains train/dev/test',
                         required=True)
 
+    parser.add_argument('--serialdir',
+                        type=Path,
+                        help='path to serialize',
+                        required=True)
+
     parser.add_argument('--device',
                         type=str,
                         default='0,1,2,3',
@@ -36,7 +41,7 @@ if __name__ == '__main__':
     os.environ['experiment_name'] = str(experiment_name)
     
     cachedir = data_root/"cached"
-    serial_dir = "./models" / data_root.parents[1]
+    serial_dir = Path(args.serialdir) / str(experiment_name)
     
     ie_train_data_path = data_root/"train.json"
     ie_dev_data_path = data_root/"dev.json"
