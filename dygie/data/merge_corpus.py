@@ -2,8 +2,8 @@ import sys
 import os 
 import json
 
-DATA_ROOT = "data/UnifiedData/"
-COMBO_ROOT = "data/combo/"
+DATA_ROOT = "UnifiedData/"
+COMBO_ROOT = "combo/"
 
 def merge_datasets(dataset_list, effect):
   train_data_list = []
@@ -38,9 +38,14 @@ def merge_datasets(dataset_list, effect):
     test_data_list = test_data_list + test_docs
     
   #
-  path = os.path.join(COMBO_ROOT, '_'.join(dataset_list))
+  if effect:
+    path = os.path.join(COMBO_ROOT, '_'.join(dataset_list), "mapped", "mech_effect")
+  else:
+    path = os.path.join(COMBO_ROOT, '_'.join(dataset_list), "mapped", "mech")
+
+  # import pdb; pdb.set_trace()
   if not os.path.exists(path):
-    os.mkdir(path) 
+    os.makedirs(path) 
   print("Directory '%s' created" %path)
   output_file_train = open(path + '/train.json', "w")
   output_file_dev = open(path + '/dev.json', "w")
