@@ -42,9 +42,9 @@ def merge_datasets(dataset_list, effect):
   if not os.path.exists(path):
     os.mkdir(path) 
   print("Directory '%s' created" %path)
-  output_file_train = open(path + 'train.json', "w")
-  output_file_dev = open(path + 'dev.json', "w")
-  output_file_test = open(path + 'test.json', "w")
+  output_file_train = open(path + '/train.json', "w")
+  output_file_dev = open(path + '/dev.json', "w")
+  output_file_test = open(path + '/test.json', "w")
 
   for item in train_data_list:
     json.dump(item, output_file_train)
