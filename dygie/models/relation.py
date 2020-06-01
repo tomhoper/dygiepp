@@ -184,10 +184,11 @@ class RelationExtractor(Model):
         # Evaluate loss and F1 if labels were provided.
         if relation_labels is not None:
             # Compute cross-entropy loss.
-            gold_relations = self._get_pruned_gold_relations(
-                relation_labels, output_dict["top_span_indices"], output_dict["top_span_mask"])
-
+            # gold_relations = self._get_pruned_gold_relations(
+            #     relation_labels, output_dict["top_span_indices"], output_dict["top_span_mask"])
+            gold_relations = self._get_pruned_gold_relations(relation_labels, output_dict["top_span_indices"], output_dict["top_span_mask"])
             cross_entropy = self._get_cross_entropy_loss(relation_scores, gold_relations)
+
 
             # Compute F1.
             predictions = self.decode(output_dict)["decoded_relations_dict"]
@@ -208,14 +209,22 @@ class RelationExtractor(Model):
         top_spans_batch = output_dict["top_spans"].detach().cpu()
         predicted_relations_batch = output_dict["predicted_relations"].detach().cpu()
         num_spans_to_keep_batch = output_dict["num_spans_to_keep"].detach().cpu()
+        relation_scores = output_dict["relation_scores"].detach().cpu()
         res_dict = []
         res_list = []
+        res_scores = []
 
         # Collect predictions for each sentence in minibatch.
-        zipped = zip(top_spans_batch, predicted_relations_batch, num_spans_to_keep_batch)
-        for top_spans, predicted_relations, num_spans_to_keep in zipped:
+        # zipped = zip(top_spans_batch, predicted_relations_batch, num_spans_to_keep_batch)
+        # for top_spans, predicted_relations, num_spans_to_keep in zipped:
+            
+
+        zipped = zip(top_spans_batch, predicted_relations_batch, num_spans_to_keep_batch, relation_scores)
+        for top_spans, predicted_relations, num_spans_to_keep, relation_score in zipped:
             entry_dict, entry_list = self._decode_sentence(
-                top_spans, predicted_relations, num_spans_to_keep)
+                top_spans, predicted_relations, num_spans_to_keep, relation_score)
+                # top_spans, predicted_relations, num_spans_to_keep)
+
             res_dict.append(entry_dict)
             res_list.append(entry_list)
 
@@ -232,24 +241,33 @@ class RelationExtractor(Model):
                 "rel_f1": f1,
                 "rel_span_recall": candidate_recall}
 
-    def _decode_sentence(self, top_spans, predicted_relations, num_spans_to_keep):
+    # def _decode_sentence(self, top_spans, predicted_relations, num_spans_to_keep):
+    def _decode_sentence(self, top_spans, predicted_relations, num_spans_to_keep, relation_score):
         # TODO(dwadden) speed this up?
         # Throw out all predictions that shouldn't be kept.
         keep = num_spans_to_keep.item()
         top_spans = [tuple(x) for x in top_spans.tolist()]
 
         # Iterate over all span pairs and labels. Record the span if the label isn't null.
+        from scipy.special import softmax
         res_dict = {}
         res_list = []
+        res_score_list = []
+
         for i, j in itertools.product(range(keep), range(keep)):
             span_1 = top_spans[i]
             span_2 = top_spans[j]
             label = predicted_relations[i, j].item()
             if label >= 0:
+                score = softmax(relation_score[i][j].cpu().detach().numpy())[label+1]
                 label_name = self.vocab.get_token_from_index(label, namespace="relation_labels")
-                res_dict[(span_1, span_2)] = label_name
-                list_entry = (span_1[0], span_1[1], span_2[0], span_2[1], label_name)
+                res_dict[(span_1, span_2, score)] = label_name
+                list_entry = (span_1[0], span_1[1], span_2[0], span_2[1], label_name, score)
+
+                # res_dict[(span_1, span_2)] = label_name
+                # list_entry = (span_1[0], span_1[1], span_2[0], span_2[1], label_name)
                 res_list.append(list_entry)
+                res_score_list.append(score)
 
         return res_dict, res_list
 
@@ -292,8 +310,10 @@ class RelationExtractor(Model):
 
         # Add the mention scores for each of the candidates.
 
-        relation_scores += (top_span_mention_scores.unsqueeze(-1) +
-                            top_span_mention_scores.transpose(1, 2).unsqueeze(-1))
+        relation_scores += (top_span_mention_scores.unsqueeze(-1) + top_span_mention_scores.transpose(1, 2).unsqueeze(-1))
+
+        # relation_scores += (top_span_mention_scores.unsqueeze(-1) +
+        #                     top_span_mention_scores.transpose(1, 2).unsqueeze(-1))
 
         shape = [relation_scores.size(0), relation_scores.size(1), relation_scores.size(2), 1]
         dummy_scores = relation_scores.new_zeros(*shape)

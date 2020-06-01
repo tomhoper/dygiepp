@@ -160,7 +160,8 @@ class DyGIEPredictor(Predictor):
         for sentence, sentence_start in zip(decoded, sentence_starts):
             res_sentence = []
             for rel in sentence:
-                cleaned = [x + sentence_start for x in rel[:4]] + [rel[4]]
+                # cleaned = [x + sentence_start for x in rel[:4]] + [rel[4]]
+                cleaned = [x + sentence_start for x in rel[:4]] + [rel[4]]+ [float(rel[5])]
                 res_sentence.append(cleaned)
             res.append(res_sentence)
         return res
