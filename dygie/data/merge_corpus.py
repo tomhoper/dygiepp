@@ -10,6 +10,8 @@ def merge_datasets(dataset_list, effect):
   dev_data_list = []
   test_data_list = []
 
+  if not os.path.exists(COMBO_ROOT):
+    os.mkdir(path) 
   for item in dataset_list:
     if effect == False:
       train_path = DATA_ROOT + item + '/mapped/mech/train.json'
