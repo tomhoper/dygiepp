@@ -31,13 +31,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     data_root = Path(args.dataroot)
-
     config_file= args.config
-    experiment_name = data_root
-    os.environ['experiment_name'] = str(data_root)
+    experiment_name = data_root.parents[1]
+    os.environ['experiment_name'] = str(experiment_name)
     
     cachedir = data_root/"cached"
-    serial_dir = "./models" / data_root
+    serial_dir = "./models" / data_root.parents[1]
     
     ie_train_data_path = data_root/"train.json"
     ie_dev_data_path = data_root/"dev.json"
