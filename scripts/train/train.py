@@ -42,9 +42,9 @@ if __name__ == '__main__':
     ie_train_data_path = data_root/"train.json"
     ie_dev_data_path = data_root/"dev.json"
     ie_test_data_path = data_root/"test.json"
-    os.environ['ie_train_data_path'] = ie_train_data_path.name
-    os.environ['ie_dev_data_path'] = ie_dev_data_path.name
-    os.environ['ie_test_data_path'] = ie_test_data_path.name
+    os.environ['ie_train_data_path'] = str(ie_train_data_path)
+    os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
+    os.environ['ie_test_data_path'] = str(ie_test_data_path)
 
     if args.device:
         os.environ['CUDA_DEVICE'] = args.device
