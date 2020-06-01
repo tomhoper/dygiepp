@@ -2,8 +2,8 @@ import sys
 import os 
 import json
 
-DATA_ROOT = "../../data/UnifiedData/"
-COMBO_ROOT = "../../data/combo/"
+DATA_ROOT = "data/UnifiedData/"
+COMBO_ROOT = "data/combo/"
 
 def merge_datasets(dataset_list, effect):
   train_data_list = []
@@ -11,7 +11,7 @@ def merge_datasets(dataset_list, effect):
   test_data_list = []
 
   if not os.path.exists(COMBO_ROOT):
-    os.mkdir(path) 
+    os.mkdir(COMBO_ROOT) 
   for item in dataset_list:
     if effect == False:
       train_path = DATA_ROOT + item + '/mapped/mech/train.json'
