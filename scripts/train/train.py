@@ -36,13 +36,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     data_root = Path(args.dataroot)
-    config_file= args.config
+    config_file = args.config
     experiment_name = data_root.parents[1]
     os.environ['experiment_name'] = str(experiment_name)
     
     cachedir = data_root/"cached"
     serial_dir = Path(args.serialdir) / str(experiment_name)
-    
+    print(serial_dir)
     ie_train_data_path = data_root/"train.json"
     ie_dev_data_path = data_root/"dev.json"
     ie_test_data_path = data_root/"test.json"
@@ -59,9 +59,9 @@ if __name__ == '__main__':
             "train",
             config_file,
             "--cache-directory",
-            cachedir.name,
+            str(cachedir),
             "--serialization-dir",
-            serial_dir.name,
+            str(serial_dir),
             "--include-package",
             "dygie"
     ]
