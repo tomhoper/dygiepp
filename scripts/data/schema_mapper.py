@@ -47,8 +47,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataroot', type=str, default='/net/nfs2.corp/s2-research/tomh/UnifiedData', help='root dir for dataset folders')
-    parser.add_argument('--dataset', type=str, choices = ['scierc','gold_covid','chemprot','srl'], default='chemprot', help='which dataset to map')
-    parser.add_argument('--maptype', choices = ['mech','mech_effect'],default="mech", help='if specified, will download all files from s3 for given release date')
+    parser.add_argument('--dataset', type=str, choices = ['scierc','covid_anno','covid_anno_augment','chemprot','srl'], default='chemprot', help='which dataset to map')
+    parser.add_argument('--maptype', choices = ['mech','mech_effect'],default="mech", help='map to mech only or to mech effect')
 
     args = parser.parse_args()
 
