@@ -7,6 +7,7 @@ from typing import Any, Dict
 import sys
 from dygie_visualize_util import Dataset
 import pathlib
+from pathlib import Path
 
 """
 Current usage (should change to be cleaner)
@@ -42,21 +43,18 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser() 
 
-    parser.add_argument('--rootpath',
-                        type=str,
-                        help='path to save the predictions',
+    parser.add_argument('--data_combo',
+                        type=Path,
+                        help='root dataset folder, contains train/dev/test',
                         required=True)
 
-    parser.add_argument('--serialdir',
-                        type=str,
-                        default='UnifiedData/covid_anno_par/mapped/mech_effect/',
-                        help='path for gold test',
-                        required=False)
-
-    parser.add_argument('--serialdir',
-                        type=str,
-                        help='path to serialized model',
+    parser.add_argument('--root',
+                        type=Path,
+                        help='./',
                         required=True)
+
+    parser.add_argument('--mech_effect_mode',
+                        action='store_true')
 
     parser.add_argument('--device',
                         type=str,
@@ -71,12 +69,20 @@ if __name__ == '__main__':
         os.environ['CUDA_DEVICE'] = args.device
         os.environ['cuda_device'] = args.device
 
-    test_dir = pathlib.Path(args.test_dir) / 'test.json'
-    serial_dir = pathlib.Path(args.serialdir)
-    pred_path = pathlib.Path(args.pred_path)
+    if args.mech_effect_mode == True:
+        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par' / 'mapped' / 'mech_effect' 
+        serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech_effect'
+        pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect'
 
-    pathlib.Path('/tmp/sub1/sub2').mkdir(parents=True, exist_ok=True)
 
+    if args.mech_effect_mode == False:
+        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par' / 'mapped' / 'mech'
+        serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech'
+        pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech'
+
+    pred_dir.mkdir(parents=True, exist_ok=True)
+    test_dir = pathlib.Path(test_dir) /'test.json'
+    pred_path = pathlib.Path(pred_dir) / "pred.json"
 
     allennlp_command = [
             "allennlp",
@@ -91,7 +97,8 @@ if __name__ == '__main__':
             "--cuda-device",
             args.device
     ]
+
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
-    ds = Dataset(args.pred_path)
-    prediction_to_tsv(ds, pred_path/ "pred.tsv")
+    ds = Dataset(pred_path)
+    prediction_to_tsv(ds, pathlib.Path(pred_dir) / "pred.tsv")
     
