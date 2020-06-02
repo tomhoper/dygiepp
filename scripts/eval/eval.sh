@@ -1,5 +1,4 @@
-python eval.py --pred_path $1  --serialdir $2
-source activate $3
+python eval.py --pred_path $1  --serialdir $2 --test_dir $3
 python eval_metric.py --pred_path $1 
 
 
