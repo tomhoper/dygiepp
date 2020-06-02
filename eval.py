@@ -5,8 +5,8 @@ import shutil
 import subprocess
 from typing import Any, Dict
 import sys
-# sys.path.append("../../")
-# from dygie_visualize_util import Dataset
+from dygie_visualize_util import Dataset
+
 
 
 def get_doc_key_info(ds):
@@ -30,46 +30,6 @@ def prediction_to_tsv(ds, output_file_name):
   for key in doc_info:
     conf0 = str(doc_info[key])
     output_file.write(key[0] + '\t' + key[1] + '\t' + key[2] + '\t' + key[3] + '\t' + str(key[4]) + '\t' + conf0 + '\n')
-
-def eval_model_preds(gold_path, pred_path):
-    golddf = pd.read_csv(gold_path, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
-    golddf = golddf[golddf["y"]=="accept"]
-
-    #read predictions, place in dictionary
-    predf = pd.read_csv(pred_path, sep="\t",names=["id","text","arg0","arg1","rel","conf"])
-    
-
-    prediction_dict = {}
-    prediction_dict["model preds"] = predf[["id","arg0","arg1"]]
-    
-    #get dep-parse relations and all pairs relations, place in prediction_dict
-    #both baselines can use nnp, NER, or a combo
-    dep_relations = depparse_base(golddf,pair_type="NNP")
-    allpairs_relations = allpairs_base(golddf,pair_type="NNP")
-    prediction_dict["depparsennp"] = pd.DataFrame(dep_relations,columns=["id","arg0","arg1"])
-    prediction_dict["allpairsnnp"] = pd.DataFrame(allpairs_relations,columns=["id","arg0","arg1"])
-
-
-    #get SRL relations and openIE relations, place in prediction_dict
-    predictor_ie = get_openie_predictor()
-    predictor_srl = get_srl_predictor()
-    srl_relations = allenlp_base_relations(predictor_srl,golddf)
-    ie_relations = allenlp_base_relations(predictor_ie,golddf)
-    prediction_dict["srl"] = pd.DataFrame(srl_relations,columns=["id","arg0","arg1"])
-    prediction_dict["openie"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
-
-    #get results
-    for k,v in prediction_dict.items():
-        print ("****")
-        if not len(v):
-            print(k," -- NO PREDICTIONS -- ")
-            continue
-        for match_metric in ["jaccard","substring"]:
-            corr_pred, precision,recall, F1 = eval(v,golddf,match_metric=match_metric,jaccard_thresh=0.3)
-            print('model: {0} metric: {1} precision:{2} recall {3} f1: {4}'.format(k, match_metric, precision,recall, F1))
-        print ("****")
-
-
 
 
 if __name__ == '__main__':
@@ -118,13 +78,7 @@ if __name__ == '__main__':
             "--cuda-device",
             args.device
     ]
-
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
     ds = Dataset(args.pred_path)
-    prediction_to_tsv(ds, args.test_dir + "pred.tsv")
-    # subprocess.call(["activate", "covid_eval"])
-    # import pdb; pdb.set_trace()
+    prediction_to_tsv(ds, args.pred_path + "pred.tsv")
     
-    # from allennlp.common.params import Params
-    # from eval_utils import *
-    # eval_model_preds("gold_par.tsv", args.test_dir + "pred.tsv")
