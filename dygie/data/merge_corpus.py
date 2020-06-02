@@ -68,8 +68,11 @@ def merge_datasets(dataset_list, effect):
 
 if __name__ == '__main__':
 
-  merge_datasets(["scierc", "covid_anno"],  effect=True)
-  merge_datasets(["scierc", "covid_anno"],  effect=False)
+  merge_datasets(["scierc", "covid_anno_par"],  effect=True)
+  merge_datasets(["scierc", "covid_anno_par"],  effect=False)
+
+  merge_datasets(["scierc", "covid_anno_augmented_par"],  effect=True)
+  merge_datasets(["scierc", "covid_anno_augmented_par"],  effect=False)
 
   merge_datasets(["scierc", "covid_anno_augment"],  effect=True)
   merge_datasets(["scierc", "covid_anno_augment"],  effect=False)
@@ -80,25 +83,25 @@ if __name__ == '__main__':
   merge_datasets(["scierc", "chemprot"],  effect=True)
   merge_datasets(["scierc", "chemprot"],  effect=False)
 
-  merge_datasets(["scierc", "srl", "covid_anno"],  effect=True)
-  merge_datasets(["scierc", "srl", "covid_anno"],  effect=False)
+  merge_datasets(["scierc", "srl", "covid_anno_par"],  effect=True)
+  merge_datasets(["scierc", "srl", "covid_anno_par"],  effect=False)
 
-  merge_datasets(["scierc", "srl", "covid_anno_augment"],  effect=True)
-  merge_datasets(["scierc", "srl", "covid_anno_augment"],  effect=False)
-
-
-  merge_datasets(["scierc", "chemprot", "covid_anno"],  effect=True)
-  merge_datasets(["scierc", "chemprot", "covid_anno"],  effect=False)
-
-  merge_datasets(["scierc", "chemprot", "covid_anno_augment"],  effect=True)
-  merge_datasets(["scierc", "chemprot", "covid_anno_augment"],  effect=False)
+  merge_datasets(["scierc", "srl", "covid_anno_augmented_par"],  effect=True)
+  merge_datasets(["scierc", "srl", "covid_anno_augmented_par"],  effect=False)
 
 
-  merge_datasets(["scierc", "chemprot", "srl", "covid_anno"],  effect=True)
-  merge_datasets(["scierc", "chemprot", "srl", "covid_anno"],  effect=False)
+  merge_datasets(["scierc", "chemprot", "covid_anno_par"],  effect=True)
+  merge_datasets(["scierc", "chemprot", "covid_anno_par"],  effect=False)
 
-  merge_datasets(["scierc", "chemprot", "srl", "covid_anno_augment"],  effect=True)
-  merge_datasets(["scierc", "chemprot", "srl", "covid_anno_augment"],  effect=False)
+  merge_datasets(["scierc", "chemprot", "covid_anno_augmented_par"],  effect=True)
+  merge_datasets(["scierc", "chemprot", "covid_anno_augmented_par"],  effect=False)
+
+
+  merge_datasets(["scierc", "chemprot", "srl", "covid_anno_par"],  effect=True)
+  merge_datasets(["scierc", "chemprot", "srl", "covid_anno_par"],  effect=False)
+
+  merge_datasets(["scierc", "chemprot", "srl", "covid_anno_augmented_par"],  effect=True)
+  merge_datasets(["scierc", "chemprot", "srl", "covid_anno_augmented_par"],  effect=False)
 
 
     # merging_list = sys.argv[1:]
