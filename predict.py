@@ -7,10 +7,12 @@ from typing import Any, Dict
 import sys
 from dygie_visualize_util import Dataset
 import pathlib
+
 """
 Current usage (should change to be cleaner)
-python predict.py --pred_path ../covidpreds/sciercmecheffect/preds.tsv --test_dir UnifiedData/covid_anno_par/gold/mech/ --serialdir ../UnifiedData_output/scierc/mech_effect/UnifiedData/scierc/
+python predict.py --pred_path ../covidpreds/sciercemech/preds.tsv --test_dir UnifiedData/covid_anno_par/gold/mech/ --serialdir ../UnifiedData_output/scierc/mech/UnifiedData/scierc/
 """
+
 
 
 def get_doc_key_info(ds):
@@ -40,12 +42,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser() 
 
-    parser.add_argument('--pred_path',
+    parser.add_argument('--rootpath',
                         type=str,
                         help='path to save the predictions',
                         required=True)
 
-    parser.add_argument('--test_dir',
+    parser.add_argument('--serialdir',
                         type=str,
                         default='UnifiedData/covid_anno_par/mapped/mech_effect/',
                         help='path for gold test',
@@ -70,8 +72,11 @@ if __name__ == '__main__':
         os.environ['cuda_device'] = args.device
 
     test_dir = pathlib.Path(args.test_dir) / 'test.json'
-    serial_dir = pathlib.Path(args.serial_dir) / 'test.json'
+    serial_dir = pathlib.Path(args.serialdir)
     pred_path = pathlib.Path(args.pred_path)
+
+    pathlib.Path('/tmp/sub1/sub2').mkdir(parents=True, exist_ok=True)
+
 
     allennlp_command = [
             "allennlp",
@@ -88,5 +93,5 @@ if __name__ == '__main__':
     ]
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
     ds = Dataset(args.pred_path)
-    prediction_to_tsv(ds, str(pred_path)/ "pred.tsv")
+    prediction_to_tsv(ds, pred_path/ "pred.tsv")
     
