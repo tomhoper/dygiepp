@@ -7,6 +7,7 @@ import tempfile
 from typing import Any, Dict
 from pathlib import Path
 from allennlp.common.params import Params
+import pathlib
 
 if __name__ == '__main__':
 
@@ -18,15 +19,18 @@ if __name__ == '__main__':
                         help='training config',
                         required=False)
  
-    parser.add_argument('--dataroot',
+    parser.add_argument('--data_combo',
                         type=Path,
                         help='root dataset folder, contains train/dev/test',
                         required=True)
 
-    parser.add_argument('--serialdir',
+    parser.add_argument('--root',
                         type=Path,
-                        help='path to serialize',
+                        help='./',
                         required=True)
+
+    parser.add_argument('--mech_effect_mode',
+                        action='store_true')
 
     parser.add_argument('--device',
                         type=str,
@@ -35,13 +39,19 @@ if __name__ == '__main__':
                         help="cuda devices comma seperated")
 
     args = parser.parse_args()
-    data_root = Path(args.dataroot)
+    if args.mech_effect_mode == True:
+        data_root = pathlib.Path(args.root) / 'combo' / args.data_combo / 'mapped' / 'mech_effect'
+        serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech_effect'
+    if args.mech_effect_mode == False:
+        data_root = pathlib.Path(args.root) / 'combo' / args.data_combo / 'mapped' / 'mech'
+        serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech'
+
+
     config_file = args.config
-    experiment_name = data_root.parents[1]
+    experiment_name = args.data_combo
     os.environ['experiment_name'] = str(experiment_name)
     
     cachedir = data_root/"cached"
-    serial_dir = Path(args.serialdir) / str(experiment_name)
     print(serial_dir)
     ie_train_data_path = data_root/"train.json"
     ie_dev_data_path = data_root/"dev.json"
@@ -53,7 +63,7 @@ if __name__ == '__main__':
     if args.device:
         os.environ['CUDA_DEVICE'] = args.device
         os.environ['cuda_device'] = args.device
-
+        
     allennlp_command = [
             "allennlp",
             "train",
