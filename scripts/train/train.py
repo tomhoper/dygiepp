@@ -32,6 +32,9 @@ if __name__ == '__main__':
     parser.add_argument('--mech_effect_mode',
                         action='store_true')
 
+    parser.add_argument('--single_source',
+                        action='store_true')
+
     parser.add_argument('--device',
                         type=str,
                         default='0,1,2,3',
@@ -39,11 +42,15 @@ if __name__ == '__main__':
                         help="cuda devices comma seperated")
 
     args = parser.parse_args()
+    if args.single_source:
+        data_root_dir = "UnifiedData"
+    else:
+        data_root_dir = "combo"
     if args.mech_effect_mode == True:
-        data_root = pathlib.Path(args.root) / 'combo' / args.data_combo / 'mapped' / 'mech_effect'
+        data_root = pathlib.Path(args.root) / data_root_dir / args.data_combo / 'mapped' / 'mech_effect'
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech_effect'
     if args.mech_effect_mode == False:
-        data_root = pathlib.Path(args.root) / 'combo' / args.data_combo / 'mapped' / 'mech'
+        data_root = pathlib.Path(args.root) / data_root_dir / args.data_combo / 'mapped' / 'mech'
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech'
 
 
@@ -63,7 +70,7 @@ if __name__ == '__main__':
     if args.device:
         os.environ['CUDA_DEVICE'] = args.device
         os.environ['cuda_device'] = args.device
-        
+
     allennlp_command = [
             "allennlp",
             "train",
