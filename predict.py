@@ -44,12 +44,12 @@ if __name__ == '__main__':
     parser.add_argument('--test_dir',
                         type=str,
                         default='UnifiedData/covid_anno_par/mapped/mech_effect/',
-                        help='path to save the predictions',
+                        help='path for gold test',
                         required=False)
 
     parser.add_argument('--serialdir',
                         type=str,
-                        help='path to serialize',
+                        help='path to serialized model',
                         required=True)
 
     parser.add_argument('--device',

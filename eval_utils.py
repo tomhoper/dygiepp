@@ -1,5 +1,5 @@
-# import allennlp_models.syntax.srl
-# from allennlp.predictors.predictor import Predictor
+import allennlp_models.syntax.srl
+from allennlp.predictors.predictor import Predictor
 import pandas as pd
 import re
 import itertools
@@ -15,7 +15,6 @@ def get_openie_predictor():
 
 def get_srl_predictor():
     import allennlp_models.syntax.srl
-    from allennlp.predictors.predictor import Predictor
     srlpredictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/bert-base-srl-2020.03.24.tar.gz")
     return(srlpredictor)
 
@@ -127,7 +126,7 @@ def depparse_base(golddf,pair_type="NNP"):
                                 _=[relations.append((row[1]["id"],m.text, e.text)) for m in matches]
     return relations
 
-def eval(relations,golddf,match_metric="substring",jaccard_thresh=0.5):
+def ie_eval(relations,golddf,match_metric="substring",jaccard_thresh=0.5):
     goldrels = golddf[["id","arg0","arg1"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates().set_index("id")
     predrels = relations.set_index("id",inplace=False)
