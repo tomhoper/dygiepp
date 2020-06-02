@@ -1,6 +1,6 @@
 import argparse
 import json
-import os
+import os   
 import shutil
 import subprocess
 from typing import Any, Dict
@@ -31,15 +31,16 @@ if __name__ == '__main__':
 
     GOLD_PATH = "gold_par.tsv"
     GOLD_PATH = pathlib.Path(GOLD_PATH)
-    pred_path = pathlib.Path(args.pred) / "pred.tsv"
+    PREDS_PATH = pathlib.Path(args.pred) / "pred.tsv"
 
     golddf = pd.read_csv(GOLD_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
     golddf = golddf[golddf["y"]=="accept"]
-
+    golddf["id"] = golddf["id"].str.replace(r'[+]+$','')
     #read predictions, place in dictionary
 
     prediction_dict = {}
     predf = pd.read_csv(PREDS_PATH, sep="\t",names=["id","text","arg0","arg1","rel","conf"])
+    predf["id"] = predf["id"].str.replace(r'[+]+$','')
     #check prediction label mapping matches the loaded gold file
     assert predf["rel"].unique()[0] == golddf["rel"].unique()[0]
     prediction_dict["model preds"] = predf[["id","arg0","arg1"]]
