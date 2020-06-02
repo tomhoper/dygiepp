@@ -6,7 +6,11 @@ import subprocess
 from typing import Any, Dict
 import sys
 from dygie_visualize_util import Dataset
-
+import pathlib
+"""
+Current usage (should change to be cleaner)
+python predict.py --pred_path ../covidpreds/sciercmecheffect/preds.tsv --test_dir UnifiedData/covid_anno_par/gold/mech/ --serialdir ../UnifiedData_output/scierc/mech_effect/UnifiedData/scierc/
+"""
 
 
 def get_doc_key_info(ds):
@@ -65,20 +69,24 @@ if __name__ == '__main__':
         os.environ['CUDA_DEVICE'] = args.device
         os.environ['cuda_device'] = args.device
 
+    test_dir = pathlib.Path(args.test_dir) / 'test.json'
+    serial_dir = pathlib.Path(args.serial_dir) / 'test.json'
+    pred_path = pathlib.Path(args.pred_path)
+
     allennlp_command = [
             "allennlp",
             "predict",
-            args.serialdir,
-            args.test_dir + 'test.json',
+            str(serial_dir),
+            str(test_dir),
             "--predictor dygie",
             "--include-package dygie",
             "--use-dataset-reader",
             "--output-file",
-            args.pred_path,
+            str(pred_path),
             "--cuda-device",
             args.device
     ]
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
     ds = Dataset(args.pred_path)
-    prediction_to_tsv(ds, args.pred_path + "pred.tsv")
+    prediction_to_tsv(ds, str(pred_path)/ "pred.tsv")
     

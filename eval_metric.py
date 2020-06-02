@@ -7,11 +7,11 @@ from typing import Any, Dict
 import sys
 import pandas as pd
 from eval_utils import depparse_base, allpairs_base, get_openie_predictor,get_srl_predictor,allenlp_base_relations, ie_eval
-
+import pathlib
 
 """
 Usage:
-python eval_metric.py --pred ../covidpreds/preds.tsv --gold UnifiedData/covid_anno_par/gold/mech/
+python eval_metric.py --pred ../covidpreds/ --gold UnifiedData/covid_anno_par/gold/mech/
 """
 
 if __name__ == '__main__':
@@ -30,7 +30,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     GOLD_PATH = "gold_par.tsv"
-    PREDS_PATH = args.pred + "pred.tsv"
+    GOLD_PATH = pathlib.Path(GOLD_PATH)
+    pred_path = pathlib.Path(args.pred) / "pred.tsv"
+
     golddf = pd.read_csv(GOLD_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
     golddf = golddf[golddf["y"]=="accept"]
 
