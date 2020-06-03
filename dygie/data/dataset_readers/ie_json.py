@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 # TODO(dwadden) Add types, unit-test, clean up.
 
+class LengthMismatchException(Exception):
+    pass
+
+
 class MissingDict(dict):
     """
     If key isn't there, returns default value. Like defaultdict, but it doesn't store the missing
@@ -181,6 +185,15 @@ class IEJsonReader(DatasetReader):
 
             cluster_dict_doc = make_cluster_dict(js["clusters"])
             #zipped = zip(js["sentences"], js["ner"], js["relations"], js["events"])
+
+            # Double-check that all fields have the same number of entries.
+            n_sents = len(js["sentences"])
+            for field in ["ner", "relations", "events"]:
+                if len(js["sentences"]) != len(js[field]):
+                    field_length = len(js[field])
+                    msg = f"Doc_key {js['doc_key']} has {n_sentences} sentences, but {field_length} entries for {field}."
+                    raise LengthMismatchException(msg)
+
             zipped = zip(js["sentences"], js["ner"], js["relations"], js["events"], js["sentence_groups"], js["sentence_start_index"], js["sentence_end_index"])
 
             # Loop over the sentences.
