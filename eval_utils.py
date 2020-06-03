@@ -162,7 +162,7 @@ def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_
     FN = goldrels.shape[0] - TP
 
     precision = TP/(TP+FP)
-    recall = TP/FN
+    recall = TP/(FN+TP)
 
     F1 = 2*(precision * recall) / (precision + recall)
 
