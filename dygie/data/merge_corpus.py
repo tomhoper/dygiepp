@@ -11,7 +11,7 @@ python dygie/data/merge_corpus.py --root ../coviddata/ --dataset_list scierc,che
 
 def merge_datasets(rootdir, dataset_list):
 
-  combodir = rootdir / "combos"
+  combodir = rootdir / "combo"
   rootdir = rootdir /"UnifiedData"
 
   for effect in [True,False]:
