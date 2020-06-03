@@ -49,7 +49,8 @@ def relation_matching(pair,metric,labels=[1,1],thresh=0.5):
       if metric =="substring":
         if p1[0] in p2[0] or p2[0] in p1[0]:
             if p1[1] in p2[1] or p2[1] in p1[1]:
-                match=True
+                if labels[0]==labels[1]:
+                    match=True
       elif metric =="jaccard":
         j0 = jaccard_similarity(p1[0].split(),p2[0].split())
         j1 = jaccard_similarity(p1[1].split(),p2[1].split())
@@ -127,6 +128,7 @@ def depparse_base(golddf,pair_type="NNP"):
     return relations
 
 def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_thresh=0.5):
+    # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
     #only get rel for our model / gold, otherwise assume one collapsed label
@@ -152,13 +154,13 @@ def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_
                     labels = [pair[0][2],pair[1][2]]
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh)
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
+                    
                     good_preds.append([i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
     
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold","arg0_pred","arg1_pred"])
     TP = corr_pred.shape[0]
     FP = predrels.shape[0] - TP
-
     FN = goldrels.shape[0] - TP
 
     precision = TP/(TP+FP)
