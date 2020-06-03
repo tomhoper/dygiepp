@@ -10,8 +10,12 @@ import pathlib
 from pathlib import Path
 
 """
-Current usage (should change to be cleaner)
-python predict.py --pred_path ../covidpreds/sciercemech/preds.tsv --test_dir UnifiedData/covid_anno_par/gold/mech/ --serialdir ../UnifiedData_output/scierc/mech/UnifiedData/scierc/
+Usage
+
+python predict.py --root ../coviddata --data_combo scierc_chemprot_srl 
+python predict.py --root ../coviddata --data_combo scierc_chemprot_srl --mech_effect_mode
+
+
 """
 
 
