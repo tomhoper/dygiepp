@@ -6,13 +6,13 @@ import subprocess
 import tempfile
 from typing import Any, Dict
 from pathlib import Path
-from allennlp.common.params import Params
 import pathlib
 
 """
 Usage
 python scripts/train/train.py --data_combo chemprot --root ../coviddata/ --device 0,1
-python scripts/train/train.py --data_combo chemprot --root --mech_effect_mode ../coviddata/ --device 0,1
+python scripts/train/train.py --data_combo chemprot --root  ../coviddata/ --mech_effect_mode --device 2
+
 
 """
 
