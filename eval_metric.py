@@ -57,7 +57,6 @@ if __name__ == '__main__':
 
 
 
-
     GOLD_PATH = pathlib.Path(gold_path)
     PREDS_PATH = pathlib.Path(pred_dir)
 
@@ -108,13 +107,21 @@ if __name__ == '__main__':
                 corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
                 res = [k, precision, recall, F1, collapse, match_metric, 0.5]
                 res_list.append(res)
-                stats_output_file.write('\t'.join(res) + '\n')
-                
                 print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
+                if match_metric == "jaccard":
+                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.4)
+                    res = [k, precision, recall, F1, collapse, match_metric, 0.4]
+                    res_list.append(res)
+                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
+                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3)
+                    res = [k, precision, recall, F1, collapse, match_metric, 0.3]
+                    res_list.append(res)
+                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
+
+
         print ("****")
 
-    stats_df = pd.concat(res_list)
-    stats_df.columns =["model","P","R","F1","collapse","match_mettric","threshold"])
+    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","collapse","match_mettric","threshold"])
     stats_path = stat_path / 'stats.tsv'
     stats_df.to_csv(stat_path,header=True,index=False, sep="\t")
 
