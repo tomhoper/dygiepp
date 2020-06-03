@@ -12,7 +12,8 @@ from pathlib import Path
 
 """
 Usage:
-python eval_metric.py --pred ../covidpreds/ --gold UnifiedData/covid_anno_par/gold/mech/
+python eval_metric.py --root ../coviddata --data_combo scierc_chemprot_srl 
+python eval_metric.py --root ../coviddata --data_combo scierc_chemprot_srl --mech_effect_mode
 """
 
 if __name__ == '__main__':
@@ -63,8 +64,8 @@ if __name__ == '__main__':
     predf = pd.read_csv(PREDS_PATH, sep="\t",names=["id","text","arg0","arg1","rel","conf"])
     predf["id"] = predf["id"].str.replace(r'[+]+$','')
     #check prediction label mapping matches the loaded gold file
-    # assert predf["rel"].unique()[0] == golddf["rel"].unique()[0]
-    prediction_dict["model preds"] = predf[["id","arg0","arg1"]]
+    assert len(predf["rel"].unique()) == len(golddf["rel"].unique())
+    prediction_dict["model preds"] = predf[["id","arg0","arg1","rel","conf"]]
 
 
     #get dep-parse relations and all pairs relations, place in prediction_dict
@@ -89,9 +90,15 @@ if __name__ == '__main__':
         if not len(v):
             print(k," -- NO PREDICTIONS -- ")
             continue
+        #only try non-collapsed labels for relations that have it (i.e. ours and gold)
+        if "rel" not in v.columns:
+            collapse_opt = [True]
+        else:
+            collapse_opt = [False,True]
         for match_metric in ["jaccard","substring"]:
-            corr_pred, precision,recall, F1 = ie_eval(v,golddf,match_metric=match_metric,jaccard_thresh=0.5)
-            print('model: {0} metric: {1} precision:{2} recall {3} f1: {4}'.format(k, match_metric, precision,recall, F1))
+            for collapse in collapse_opt:
+                corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
+                print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
         print ("****")
 
 

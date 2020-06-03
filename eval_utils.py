@@ -42,7 +42,7 @@ def jaccard_similarity(list1, list2):
     s2 = set(list2)
     return len(s1.intersection(s2)) / len(s1.union(s2))
 
-def relation_matching(pair,metric,thresh=0.5):
+def relation_matching(pair,metric,labels=[1,1],thresh=0.5):
       match = False
       p1 = pair[0]
       p2 = pair[1]
@@ -53,7 +53,7 @@ def relation_matching(pair,metric,thresh=0.5):
       elif metric =="jaccard":
         j0 = jaccard_similarity(p1[0].split(),p2[0].split())
         j1 = jaccard_similarity(p1[1].split(),p2[1].split())
-        if j0>=thresh and j1>=thresh :
+        if j0>=thresh and j1>=thresh and labels[0]==labels[1]:
             match=True
 
       return match
@@ -126,10 +126,14 @@ def depparse_base(golddf,pair_type="NNP"):
                                 _=[relations.append((row[1]["id"],m.text, e.text)) for m in matches]
     return relations
 
-def ie_eval(relations,golddf,match_metric="substring",jaccard_thresh=0.5):
-    goldrels = golddf[["id","arg0","arg1"]]#.drop_duplicates()
-    goldrels = goldrels.drop_duplicates().set_index("id")
-    predrels = relations.set_index("id",inplace=False)
+def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_thresh=0.5):
+    goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
+    #only get rel for our model / gold, otherwise assume one collapsed label
+    if "rel" in relations.columns:
+        predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
+    else:
+        predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
 
     good_preds = []
     seen_pred_gold = {}
@@ -142,7 +146,11 @@ def ie_eval(relations,golddf,match_metric="substring",jaccard_thresh=0.5):
                 preds = predrels.loc[i].values
             c = list(itertools.product(gold.values, preds))
             for pair in c:
-                m = relation_matching(pair,metric=match_metric,thresh=jaccard_thresh)
+                if collapse:
+                    labels = [1,1]
+                else:
+                    labels = [pair[0][2],pair[1][2]]
+                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh)
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     good_preds.append([i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
