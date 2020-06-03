@@ -9,6 +9,13 @@ from pathlib import Path
 from allennlp.common.params import Params
 import pathlib
 
+"""
+Usage
+python scripts/train/train.py --data_combo chemprot --root ../coviddata/ --device 0,1
+python scripts/train/train.py --data_combo chemprot --root --mech_effect_mode ../coviddata/ --device 0,1
+
+"""
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()  # pylint: disable=invalid-name
@@ -21,7 +28,7 @@ if __name__ == '__main__':
  
     parser.add_argument('--data_combo',
                         type=Path,
-                        help='root dataset folder, contains train/dev/test',
+                        help='root dataset folder, contains mapped/mech, mapped/mech_effect and then train,dev,test',
                         required=True)
 
     parser.add_argument('--root',
