@@ -92,7 +92,6 @@ if __name__ == '__main__':
     
     #get results
     res_list = []
-    stats_output_file.write("alg_name\tP\tR\tF1\tcollapse\tsimilarity_metric\tjaccard-th\n")
     
     for k,v in prediction_dict.items():
         print ("****")
