@@ -46,11 +46,17 @@ if __name__ == '__main__':
     if args.mech_effect_mode == True:
         gold_path = pathlib.Path(args.root) / 'gold' /  'mech_effect' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
+        stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect' / 
 
     if args.mech_effect_mode == False:
         gold_path = pathlib.Path(args.root) / 'gold' /  'mech' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' / "pred.tsv"
+        stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech' / 
 
+    stat_path.mkdir(parents=True, exist_ok=True)
+
+    stats_output_file = open(str(stat_path) +'stats.tsv')
+    stats_output_file.write("alg_name\tP\tR\tF1\tcollapse\tsimilarity_metric\tjaccard-th\n")
 
     GOLD_PATH = pathlib.Path(gold_path)
     PREDS_PATH = pathlib.Path(pred_dir)
@@ -65,7 +71,7 @@ if __name__ == '__main__':
     predf["id"] = predf["id"].str.replace(r'[+]+$','')
     #check prediction label mapping matches the loaded gold file
     assert len(predf["rel"].unique()) == len(golddf["rel"].unique())
-    prediction_dict["model preds"] = predf[["id","arg0","arg1","rel","conf"]]
+    prediction_dict[str(args.data_combo)] = predf[["id","arg0","arg1","rel","conf"]]
 
 
     #get dep-parse relations and all pairs relations, place in prediction_dict
@@ -98,6 +104,8 @@ if __name__ == '__main__':
         for match_metric in ["jaccard","substring"]:
             for collapse in collapse_opt:
                 corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
+                res = [k, precision, recall, F1, collapse, match_metric, 0.5]
+                stats_output_file.write('\t'.join(res) + '\n')
                 print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
         print ("****")
 
