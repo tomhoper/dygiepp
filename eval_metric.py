@@ -46,12 +46,12 @@ if __name__ == '__main__':
     if args.mech_effect_mode == True:
         gold_path = pathlib.Path(args.root) / 'gold' /  'mech_effect' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
-        stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect' / 
+        stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
         gold_path = pathlib.Path(args.root) / 'gold' /  'mech' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' / "pred.tsv"
-        stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech' / 
+        stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
     stat_path.mkdir(parents=True, exist_ok=True)
 
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","collapse","match_mettric","threshold"])
     stats_path = stat_path / 'stats.tsv'
-    stats_df.to_csv(stat_path,header=True,index=False, sep="\t")
+    stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
 
 
 
