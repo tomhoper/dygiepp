@@ -69,6 +69,8 @@ if __name__ == '__main__':
     predf = pd.read_csv(PREDS_PATH, sep="\t",names=["id","text","arg0","arg1","rel","conf"])
     predf["id"] = predf["id"].str.replace(r'[+]+$','')
     #check prediction label mapping matches the loaded gold file
+    print(predf["rel"].unique())
+    print(golddf["rel"].unique())
     assert len(predf["rel"].unique()) == len(golddf["rel"].unique())
     prediction_dict[str(args.data_combo)] = predf[["id","arg0","arg1","rel","conf"]]
 
