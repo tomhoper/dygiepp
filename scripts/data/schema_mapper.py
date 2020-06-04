@@ -76,6 +76,9 @@ if __name__ == '__main__':
         print(fold.name)
         fold_mapped_dir = map_dir.joinpath(map_type)
         Path(fold_mapped_dir).mkdir(parents=True, exist_ok=True)
+        fold_name = fold.name
+        if fold.name.endswith("jsonl"):
+            fold_name = fold.name[:-1]
         fold_mapped = fold_mapped_dir/fold.name
         new_jsons = []
         with jsonlines.open(fold,'r') as reader:
