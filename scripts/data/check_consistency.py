@@ -34,6 +34,8 @@ def check_one_file(fname):
                 field = entry[key]
                 field_length = len(field)
                 if field_length != n_sents:
+                    msg = f"File {fname}, doc_key {entry['doc_key']}: Expected {n_sents} entries in `{key}` but got {len(field)}."
+                    print(msg)
                     return False
 
     return True
@@ -50,8 +52,3 @@ for filename in all_files:
     is_correct = check_one_file(filename)
     if not check_one_file(filename):
         errors.append(filename)
-
-
-print("Errors were found in the following files:")
-for error in errors:
-    print(error)
