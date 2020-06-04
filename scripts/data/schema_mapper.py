@@ -9,6 +9,10 @@ from pathlib import Path
 from tqdm import tqdm
 import argparse
 
+"""
+Usage
+python scripts/data/schema_mapper.py --dataroot ../coviddata --dataset covid_anno_par --map_type mech
+"""
 
 def load_map_dict(map_path):
     with open(map_path,"r") as f:
@@ -35,25 +39,28 @@ def map_relation(doc_dat,schemamap):
     new_rel = []
     for rel_list in doc_dat['relations']:
         new_rel_list = []
-        rel_list = [rel for rel in rel_list if rel[4] in schemamap]
+        #rel_list = [rel for rel in rel_list if rel[4] in schemamap]
         for rel in rel_list:
-            rel[4] = schemamap[rel[4]]
-            new_rel_list.append(rel)
-        if len(new_rel_list):
-            new_rel.append(new_rel_list)
+            if rel[4] in schemamap:
+                rel[4] = schemamap[rel[4]]    
+                new_rel_list.append(rel)
+            else:
+                new_rel_list.append([])
+
+        new_rel.append(new_rel_list)
     doc_dat['relations'] =  new_rel
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataroot', type=str, default='/net/nfs2.corp/s2-research/tomh/UnifiedData', help='root dir for dataset folders')
-    parser.add_argument('--dataset', type=str, choices = ['scierc','covid_anno','covid_anno_augment','chemprot','srl'], default='chemprot', help='which dataset to map')
+    parser.add_argument('--dataroot', type=str, default='../coviddata', help='root dir for dataset folders')
+    parser.add_argument('--dataset', type=str, choices = ['scierc','covid_anno_par','covid_anno_augmented_par','chemprot','srl'], default='chemprot', help='which dataset to map')
     parser.add_argument('--maptype', choices = ['mech','mech_effect'],default="mech", help='map to mech only or to mech effect')
 
     args = parser.parse_args()
 
     root_path = Path(args.dataroot)
-    dataset_dir = root_path / args.dataset
+    dataset_dir = root_path / "UnifiedData"/ args.dataset
     original_dir = dataset_dir / "original"
     map_dir = dataset_dir / "mapped"
 
