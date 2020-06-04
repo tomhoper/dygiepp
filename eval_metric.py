@@ -22,11 +22,12 @@ if __name__ == '__main__':
     parser.add_argument('--data_combo',
                         type=Path,
                         help='root dataset folder, contains train/dev/test',
+                        default="covid_anno_par",
                         required=True)
 
     parser.add_argument('--root',
                         type=Path,
-                        help='./',
+                        default='../coviddata',
                         required=True)
 
     parser.add_argument('--mech_effect_mode',
@@ -54,7 +55,6 @@ if __name__ == '__main__':
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
     stat_path.mkdir(parents=True, exist_ok=True)
-
 
 
     GOLD_PATH = pathlib.Path(gold_path)
