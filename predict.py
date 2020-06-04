@@ -14,8 +14,7 @@ Usage
 
 python predict.py --root ../coviddata --data_combo scierc_chemprot_srl 
 python predict.py --root ../coviddata --data_combo scierc_chemprot_srl --mech_effect_mode
-
-
+python predict.py --root ../coviddata --data_combo scierc_chemprot_srl --topk 5
 """
 
 
@@ -66,6 +65,10 @@ if __name__ == '__main__':
                         required=False,
                         help="cuda devices comma seperated")
 
+    parser.add_argument('--topk',
+                        type=int,
+                        default=0)
+
     args = parser.parse_args()
 
 
@@ -88,19 +91,22 @@ if __name__ == '__main__':
     test_dir = pathlib.Path(test_dir) /'test.json'
     pred_path = pathlib.Path(pred_dir) / "pred.json"
 
-    allennlp_command = [
-            "allennlp",
-            "predict",
-            str(serial_dir),
-            str(test_dir),
-            "--predictor dygie",
-            "--include-package dygie",
-            "--use-dataset-reader",
-            "--output-file",
-            str(pred_path),
-            "--cuda-device",
-            args.device
-    ]
+    if args.topk:
+        os.environ['TOPK_DECODE'] = args.topk
+
+      allennlp_command = [
+              "allennlp",
+              "predict",
+              str(serial_dir),
+              str(test_dir),
+              "--predictor dygie",
+              "--include-package dygie",
+              "--use-dataset-reader",
+              "--output-file",
+              str(pred_path),
+              "--cuda-device",
+              args.device
+      ]
 
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
     ds = Dataset(pred_path)
