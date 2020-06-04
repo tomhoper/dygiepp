@@ -286,6 +286,9 @@ class RelationExtractor(Model):
         keep = num_spans_to_keep.item()
         top_spans = [tuple(x) for x in top_spans.tolist()]
 
+        # k can't be more than the number of spans to keep.
+        k = min(k, keep)
+
         # Override the predicted relations.
         relation_score_non_null = relation_score[:, :, 1:]
         _, predicted_relations = relation_score_non_null.max(-1)
