@@ -12,7 +12,7 @@ from pathlib import Path
 """
 Usage
 
-python predict.py --root ../coviddata --data_combo scierc_chemprot_srl 
+python predict.py --root ../coviddata --data_combo chemprot_scierc_covid_anno_par 
 python predict.py --root ../coviddata --data_combo scierc_chemprot_srl --mech_effect_mode
 python predict.py --root ../coviddata --data_combo scierc_chemprot_srl --topk 5
 """
@@ -92,9 +92,9 @@ if __name__ == '__main__':
     pred_path = pathlib.Path(pred_dir) / "pred.json"
 
     if args.topk:
-        os.environ['TOPK_DECODE'] = args.topk
+        os.environ['TOPK_DECODE'] = str (args.topk)
 
-      allennlp_command = [
+    allennlp_command = [
               "allennlp",
               "predict",
               str(serial_dir),
