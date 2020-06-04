@@ -73,8 +73,8 @@ if __name__ == '__main__':
     prediction_dict[str(args.data_combo)] = predf[["id","arg0","arg1","rel","conf"]]
 
 
-    get dep-parse relations and all pairs relations, place in prediction_dict
-    both baselines can use nnp, NER, or a combo
+    # get dep-parse relations and all pairs relations, place in prediction_dict
+    # both baselines can use nnp, NER, or a combo
     dep_relations = depparse_base(golddf,pair_type="NNP")
     allpairs_relations = allpairs_base(golddf,pair_type="NNP")
     prediction_dict["depparsennp"] = pd.DataFrame(dep_relations,columns=["id","arg0","arg1"])
@@ -106,16 +106,16 @@ if __name__ == '__main__':
             for collapse in collapse_opt:
 
                 corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
-                res = [k, precision, recall, F1, mech_effect_mode, collapse, match_metric, 0.5]
+                res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.5]
                 res_list.append(res)
                 print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
                 if match_metric == "jaccard":
                     corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.4)
-                    res = [k, precision, recall, F1, mech_effect_mode, collapse, match_metric, 0.4]
+                    res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.4]
                     res_list.append(res)
                     print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
                     corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3)
-                    res = [k, precision, recall, F1, mech_effect_mode, collapse, match_metric, 0.3]
+                    res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.3]
                     res_list.append(res)
                     print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
 
