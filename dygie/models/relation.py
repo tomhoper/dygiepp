@@ -322,7 +322,7 @@ class RelationExtractor(Model):
             span2 = (entry[2], entry[3])
             label = entry[4]
             softmax_score = entry[5]
-            res_dict_kept[(span1, span2, softmax_score)] = label_name
+            res_dict_kept[(span1, span2, softmax_score)] = label
 
         return res_dict_kept, res_list_kept
 
