@@ -154,10 +154,11 @@ def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh)
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     
-                    good_preds.append([i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]])
+                    good_preds.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
     
-    corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold","arg0_pred","arg1_pred"])
+    corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
+    corr_pred = corr_pred.drop_duplicates()
     TP = corr_pred.shape[0]
     FP = predrels.shape[0] - TP
     FN = goldrels.shape[0] - TP
