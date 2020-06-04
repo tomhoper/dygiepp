@@ -43,7 +43,7 @@ if __name__ == '__main__':
     #                     required=False)
 
     args = parser.parse_args()
-
+    mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
         gold_path = pathlib.Path(args.root) / 'gold' /  'mech_effect' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
@@ -73,8 +73,8 @@ if __name__ == '__main__':
     prediction_dict[str(args.data_combo)] = predf[["id","arg0","arg1","rel","conf"]]
 
 
-    #get dep-parse relations and all pairs relations, place in prediction_dict
-    #both baselines can use nnp, NER, or a combo
+    get dep-parse relations and all pairs relations, place in prediction_dict
+    both baselines can use nnp, NER, or a combo
     dep_relations = depparse_base(golddf,pair_type="NNP")
     allpairs_relations = allpairs_base(golddf,pair_type="NNP")
     prediction_dict["depparsennp"] = pd.DataFrame(dep_relations,columns=["id","arg0","arg1"])
@@ -104,24 +104,25 @@ if __name__ == '__main__':
             collapse_opt = [False,True]
         for match_metric in ["jaccard","substring"]:
             for collapse in collapse_opt:
+
                 corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
-                res = [k, precision, recall, F1, collapse, match_metric, 0.5]
+                res = [k, precision, recall, F1, mech_effect_mode, collapse, match_metric, 0.5]
                 res_list.append(res)
                 print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
                 if match_metric == "jaccard":
                     corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.4)
-                    res = [k, precision, recall, F1, collapse, match_metric, 0.4]
+                    res = [k, precision, recall, F1, mech_effect_mode, collapse, match_metric, 0.4]
                     res_list.append(res)
                     print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
                     corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3)
-                    res = [k, precision, recall, F1, collapse, match_metric, 0.3]
+                    res = [k, precision, recall, F1, mech_effect_mode, collapse, match_metric, 0.3]
                     res_list.append(res)
                     print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
 
 
         print ("****")
 
-    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","collapse","match_mettric","threshold"])
+    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","mech_effect_mode","collapse","match_mettric","threshold"])
     stats_path = stat_path / 'stats.tsv'
     stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
 
