@@ -80,7 +80,15 @@ if __name__ == '__main__':
     print("--- loading and mapping from ", original_dir)
     for fold in original_files:
         print(fold.name)
+<<<<<<< HEAD
 
+=======
+        fold_mapped_dir = map_dir.joinpath(map_type)
+        Path(fold_mapped_dir).mkdir(parents=True, exist_ok=True)
+        fold_name = fold.name
+        if fold.name.endswith("jsonl"):
+            fold_name = fold.name[:-1]
+>>>>>>> 95bd137f003cda84ccabc7227a51a8ad36ac82c3
         fold_mapped = fold_mapped_dir/fold.name
         new_jsons = []
         with jsonlines.open(fold,'r') as reader:
@@ -89,5 +97,10 @@ if __name__ == '__main__':
                 map_relation(obj,schemamap)
                 new_jsons.append(obj)
 
+<<<<<<< HEAD
         with jsonlines.open(str(fold_mapped).rstrip("l"), 'w') as writer:
             writer.write_all(new_jsons)
+=======
+        with jsonlines.open(fold_mapped, 'w') as writer:
+            writer.write_all(new_jsons)
+>>>>>>> 95bd137f003cda84ccabc7227a51a8ad36ac82c3

@@ -1,1 +1,0 @@
-{"context_width": 1, "debug": false, "max_span_width": 8, "token_indexers": {"bert": {"do_lowercase": false, "pretrained_model": "pretrained/scibert_scivocab_cased/vocab.txt", "type": "bert-pretrained", "use_starting_offsets": true}}, "type": "ie_json"}
