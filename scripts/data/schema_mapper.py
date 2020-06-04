@@ -29,7 +29,11 @@ def map_ner(doc_dat):
         for ner in ner_list:
           ner[2] = "ENTITY"
           new_ner_list.append(ner)
-        new_ner.append(new_ner_list)
+        if len(new_ner_list):
+            new_ner.append(new_ner_list)
+        else:
+            new_ner.append(new_ner_list.append([]))
+
     doc_dat['ner']  = new_ner
 
 def map_relation(doc_dat,schemamap):
@@ -71,19 +75,19 @@ if __name__ == '__main__':
     original_files = list(original_dir.glob('*.jsonl'))
     original_files.extend(list(original_dir.glob('*.json')))
 
+    fold_mapped_dir = map_dir.joinpath(map_type)
+    Path(fold_mapped_dir).mkdir(parents=True, exist_ok=True)
     print("--- loading and mapping from ", original_dir)
     for fold in original_files:
         print(fold.name)
-        fold_mapped_dir = map_dir.joinpath(map_type)
-        Path(fold_mapped_dir).mkdir(parents=True, exist_ok=True)
+
         fold_mapped = fold_mapped_dir/fold.name
         new_jsons = []
         with jsonlines.open(fold,'r') as reader:
             for obj in tqdm(reader):
                 map_ner(obj)
                 map_relation(obj,schemamap)
-                if len (obj['relations']) or len(obj['ner'][0]):
-                    new_jsons.append(obj)
+                new_jsons.append(obj)
 
-        with jsonlines.open(fold_mapped, 'w') as writer:
+        with jsonlines.open(str(fold_mapped).rstrip("l"), 'w') as writer:
             writer.write_all(new_jsons)

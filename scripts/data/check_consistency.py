@@ -27,6 +27,7 @@ def check_one_file(fname):
     # end, return True.
     keys_to_check = ["ner", "relations"]
     data = [json.loads(line) for line in open(fname)]
+    err_count = 0
     for entry in data:
         n_sents = len(entry["sentences"])
         for key in keys_to_check:
@@ -34,9 +35,13 @@ def check_one_file(fname):
                 field = entry[key]
                 field_length = len(field)
                 if field_length != n_sents:
-                    return False
+                    #print("\n""*****")
+                    #print("field len", field_length)
+                    #print("nsents", n_sents)
+                    err_count+=1
+                    #return False
 
-    return True
+    return err_count
 
 
 ####################
@@ -48,8 +53,8 @@ all_files = find("*.json", data_root) + find("*.jsonl", data_root)
 all_files = [x for x in all_files if "cached" not in x]
 for filename in all_files:
     is_correct = check_one_file(filename)
-    if not check_one_file(filename):
-        errors.append(filename)
+    #if not check_one_file(filename):
+    errors.append([filename, is_correct])
 
 
 print("Errors were found in the following files:")
