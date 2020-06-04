@@ -8,7 +8,6 @@ import spacy
 import numpy as np
 from collections import defaultdict
 
-
 def get_openie_predictor():
     openiepredictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/openie-model.2020.03.26.tar.gz")
     return(openiepredictor)
