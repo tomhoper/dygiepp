@@ -62,12 +62,10 @@ if __name__ == '__main__':
 
     golddf = pd.read_csv(GOLD_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
     golddf = golddf[golddf["y"]=="accept"]
-    golddf["id"] = golddf["id"].str.replace(r'[+]+$','')
     #read predictions, place in dictionary
 
     prediction_dict = {}
     predf = pd.read_csv(PREDS_PATH, sep="\t",names=["id","text","arg0","arg1","rel","conf"])
-    predf["id"] = predf["id"].str.replace(r'[+]+$','')
     #check prediction label mapping matches the loaded gold file
     print(predf["rel"].unique())
     print(golddf["rel"].unique())
