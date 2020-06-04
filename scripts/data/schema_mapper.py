@@ -83,8 +83,11 @@ if __name__ == '__main__':
             for obj in tqdm(reader):
                 map_ner(obj)
                 map_relation(obj,schemamap)
-                new_jsons.append(obj)
-
+                relations_size = 0
+                for rel_list in obj["relations"]:
+                    relations_size += len(rel_list)
+                if relations_size > 0:
+                    new_jsons.append(obj)
 
         with jsonlines.open(str(fold_mapped).rstrip("l"), 'w') as writer:
             writer.write_all(new_jsons)
