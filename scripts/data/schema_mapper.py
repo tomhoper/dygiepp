@@ -29,11 +29,7 @@ def map_ner(doc_dat):
         for ner in ner_list:
           ner[2] = "ENTITY"
           new_ner_list.append(ner)
-        if len(new_ner_list):
-            new_ner.append(new_ner_list)
-        else:
-            new_ner.append(new_ner_list.append([]))
-
+        new_ner.append(new_ner_list)
     doc_dat['ner']  = new_ner
 
 def map_relation(doc_dat,schemamap):
@@ -41,6 +37,7 @@ def map_relation(doc_dat,schemamap):
     Maps relation classes to new schema given by dict
     """
     new_rel = []
+
     for rel_list in doc_dat['relations']:
         new_rel_list = []
         #rel_list = [rel for rel in rel_list if rel[4] in schemamap]
@@ -48,10 +45,8 @@ def map_relation(doc_dat,schemamap):
             if rel[4] in schemamap:
                 rel[4] = schemamap[rel[4]]    
                 new_rel_list.append(rel)
-            else:
-                new_rel_list.append([])
-
         new_rel.append(new_rel_list)
+    
     doc_dat['relations'] =  new_rel
 
 if __name__ == '__main__':
@@ -80,15 +75,8 @@ if __name__ == '__main__':
     print("--- loading and mapping from ", original_dir)
     for fold in original_files:
         print(fold.name)
-<<<<<<< HEAD
-
-=======
         fold_mapped_dir = map_dir.joinpath(map_type)
         Path(fold_mapped_dir).mkdir(parents=True, exist_ok=True)
-        fold_name = fold.name
-        if fold.name.endswith("jsonl"):
-            fold_name = fold.name[:-1]
->>>>>>> 95bd137f003cda84ccabc7227a51a8ad36ac82c3
         fold_mapped = fold_mapped_dir/fold.name
         new_jsons = []
         with jsonlines.open(fold,'r') as reader:
@@ -97,10 +85,6 @@ if __name__ == '__main__':
                 map_relation(obj,schemamap)
                 new_jsons.append(obj)
 
-<<<<<<< HEAD
+
         with jsonlines.open(str(fold_mapped).rstrip("l"), 'w') as writer:
             writer.write_all(new_jsons)
-=======
-        with jsonlines.open(fold_mapped, 'w') as writer:
-            writer.write_all(new_jsons)
->>>>>>> 95bd137f003cda84ccabc7227a51a8ad36ac82c3
