@@ -1,6 +1,7 @@
 import logging
 import itertools
 from typing import Any, Dict, List, Optional
+import os
 
 import torch
 import torch.nn.functional as F
@@ -217,7 +218,7 @@ class RelationExtractor(Model):
         # Collect predictions for each sentence in minibatch.
         # zipped = zip(top_spans_batch, predicted_relations_batch, num_spans_to_keep_batch)
         # for top_spans, predicted_relations, num_spans_to_keep in zipped:
-            
+
 
         zipped = zip(top_spans_batch, predicted_relations_batch, num_spans_to_keep_batch, relation_scores)
         for top_spans, predicted_relations, num_spans_to_keep, relation_score in zipped:
@@ -245,6 +246,12 @@ class RelationExtractor(Model):
     def _decode_sentence(self, top_spans, predicted_relations, num_spans_to_keep, relation_score):
         # TODO(dwadden) speed this up?
         # Throw out all predictions that shouldn't be kept.
+
+        # Hack to predict the top k relations, no matter what their score.
+        topk_decode = os.environ.get("TOPK_DECODE")
+        if topk_decode is not None:
+            return self._decode_topk(top_spans, predicted_relations, num_spans_to_keep, relation_score, int(topk_decode))
+
         keep = num_spans_to_keep.item()
         top_spans = [tuple(x) for x in top_spans.tolist()]
 
@@ -270,6 +277,52 @@ class RelationExtractor(Model):
                 res_score_list.append(score)
 
         return res_dict, res_list
+
+    def _decode_topk(self, top_spans, predicted_relations, num_spans_to_keep, relation_score, k):
+        """
+        Predict the top-k spans pairs as having a relation, even if their score
+        is > 0.
+        """
+        keep = num_spans_to_keep.item()
+        top_spans = [tuple(x) for x in top_spans.tolist()]
+
+        # Override the predicted relations.
+        relation_score_non_null = relation_score[:, :, 1:]
+        _, predicted_relations = relation_score_non_null.max(-1)
+
+        # Iterate over all span pairs and labels. Record the span if the label isn't null.
+        from scipy.special import softmax
+        res_dict = {}
+        res_list = []
+
+        for i, j in itertools.product(range(keep), range(keep)):
+            span_1 = top_spans[i]
+            span_2 = top_spans[j]
+            label = predicted_relations[i, j].item()
+
+            # Keep it no matter what.
+            scores_all_classes = relation_score[i][j].cpu().detach().numpy()
+            raw_score = scores_all_classes[label+1]
+            softmax_score = softmax(scores_all_classes)[label+1]
+            label_name = self.vocab.get_token_from_index(label, namespace="relation_labels")
+            res_dict[(span_1, span_2, softmax_score)] = label_name
+            list_entry = (span_1[0], span_1[1], span_2[0], span_2[1], label_name, softmax_score, raw_score)
+            res_list.append(list_entry)
+
+        # Sort it by raw score in case the softmax scores are all 0 due to roundoff.
+        sorted_res = sorted(res_list, key=lambda x: x[6])[::-1]
+
+        res_list_kept = sorted_res[:k]
+        res_dict_kept = {}
+        for entry in res_list_kept:
+            span1 = (entry[0], entry[1])
+            span2 = (entry[2], entry[3])
+            label = entry[4]
+            softmax_score = entry[5]
+            res_dict_kept[(span1, span2, softmax_score)] = label_name
+
+        return res_dict_kept, res_list_kept
+
 
     @staticmethod
     def _compute_span_pair_embeddings(top_span_embeddings: torch.FloatTensor):
