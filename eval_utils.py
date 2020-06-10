@@ -7,6 +7,8 @@ import scispacy
 import spacy
 import numpy as np
 from collections import defaultdict
+spacy_nlp = spacy.load('en_core_web_sm')
+spacy_stopwords = spacy.lang.en.stop_words.STOP_WORDS
 
 def get_openie_predictor():
     openiepredictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/openie-model.2020.03.26.tar.gz")
@@ -41,20 +43,29 @@ def jaccard_similarity(list1, list2):
     s2 = set(list2)
     return len(s1.intersection(s2)) / len(s1.union(s2))
 
-def relation_matching(pair,metric,labels=[1,1],thresh=0.5):
+def filter_stopwords(tokens):
+    return " ".join([t for t in tokens if t.lower() not in spacy_stopwords])
+
+def relation_matching(pair,metric,labels=[1,1],thresh=0.5,filter_stop=False):
       match = False
       p1 = pair[0]
       p2 = pair[1]
+      if filter_stop:
+        p1 = [filter_stopwords(p1[0].split()),filter_stopwords(p1[1].split())]
+        p2 = [filter_stopwords(p2[0].split()),filter_stopwords(p2[1].split())]
+
       if metric =="substring":
         if p1[0] in p2[0] or p2[0] in p1[0]:
             if p1[1] in p2[1] or p2[1] in p1[1]:
                 if labels[0]==labels[1]:
                     match=True
+
       elif metric =="jaccard":
         j0 = jaccard_similarity(p1[0].split(),p2[0].split())
         j1 = jaccard_similarity(p1[1].split(),p2[1].split())
         if j0>=thresh and j1>=thresh and labels[0]==labels[1]:
             match=True
+       
 
       return match
 
@@ -131,7 +142,7 @@ def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
     #only get rel for our model / gold, otherwise assume one collapsed label
-    if "rel" in relations.columns:
+    if "conf" in relations.columns:
         predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
     else:
         predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
