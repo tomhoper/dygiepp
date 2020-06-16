@@ -68,7 +68,7 @@ def span_matching(span1,span2,metric,thresh=None):
             return True
     elif metric =="rouge":
         raise NotImplementedError
-        return match
+    return match
 
 def relation_matching(pair,metric,labels=[1,1],thresh=0.5,filter_stop=False,span_mode = False):
       match = False
