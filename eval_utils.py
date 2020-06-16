@@ -9,6 +9,9 @@ import numpy as np
 from collections import defaultdict
 spacy_nlp = spacy.load('en_core_web_sm')
 spacy_stopwords = spacy.lang.en.stop_words.STOP_WORDS
+nlp = spacy.load("en_core_sci_sm")
+from rouge import Rouge 
+rouge = Rouge()
 
 def get_openie_predictor():
     openiepredictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/openie-model.2020.03.26.tar.gz")
@@ -46,27 +49,47 @@ def jaccard_similarity(list1, list2):
 def filter_stopwords(tokens):
     return " ".join([t for t in tokens if t.lower() not in spacy_stopwords])
 
-def relation_matching(pair,metric,labels=[1,1],thresh=0.5,filter_stop=False):
+
+def span_matching(span1,span2,metric,thresh=None):
+    match = False
+    if metric =="substring":
+        if span1 in span2 or span2 in span1:
+            return True
+    elif metric =="jaccard":
+        j = jaccard_similarity(span1.split(),span2.split())
+        if j>thresh:
+            return True
+    elif metric =="head":
+        doc = nlp(span1)
+        root1 = [t.text for t in doc if t.dep_ =="ROOT"]
+        doc = nlp(span2)
+        root2 = [t.text for t in doc if t.dep_ =="ROOT"]
+        if root1[0] == root2[0]:
+            return True
+    elif metric =="rouge":
+        raise NotImplementedError
+        return match
+
+def relation_matching(pair,metric,labels=[1,1],thresh=0.5,filter_stop=False,span_mode = False):
       match = False
+      arg0match = False
+      arg1match = False
       p1 = pair[0]
       p2 = pair[1]
+      if metric=="head":
+          filter_stop = False
       if filter_stop:
         p1 = [filter_stopwords(p1[0].split()),filter_stopwords(p1[1].split())]
         p2 = [filter_stopwords(p2[0].split()),filter_stopwords(p2[1].split())]
 
-      if metric =="substring":
-        if p1[0] in p2[0] or p2[0] in p1[0]:
-            if p1[1] in p2[1] or p2[1] in p1[1]:
-                if labels[0]==labels[1]:
-                    match=True
-
-      elif metric =="jaccard":
-        j0 = jaccard_similarity(p1[0].split(),p2[0].split())
-        j1 = jaccard_similarity(p1[1].split(),p2[1].split())
-        if j0>=thresh and j1>=thresh and labels[0]==labels[1]:
-            match=True
-       
-
+      if span_matching(p1[0],p2[0],metric,thresh):
+          arg0match = True
+          if span_matching(p1[1],p2[1],metric,thresh):
+              arg1match = True
+              if labels[0]==labels[1]:
+                match=True
+      if span_mode:
+          return (arg0match or arg1match) and labels[0]==labels[1]
       return match
 
 def allpairs_base(golddf,pair_type="NNP"):
@@ -97,7 +120,6 @@ def depparse_base(golddf,pair_type="NNP"):
     print("loading scispacy model for dep parse and NER...")
     #https://github.com/allenai/scispacy#available-models
 
-    nlp = spacy.load("en_core_sci_sm")
 
     uniquetext = golddf.drop_duplicates(subset=["id","text"])
     for row in uniquetext.iterrows():
