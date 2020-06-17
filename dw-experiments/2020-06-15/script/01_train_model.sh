@@ -4,7 +4,7 @@ model_dir=$PWD/models
 dygie_dir=../..
 
 cd $dygie_dir
-data_root="./data/coviddata/combo/chemprot_scierc_covid_anno_par/mapped/mech_effect"
+data_root="./data/coviddata/combo/chemprot/mapped/mech_effect"
 config_file="./training_config/chemprot.jsonnet"
 cuda_device=0,1
 
