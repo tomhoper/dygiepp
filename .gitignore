@@ -1,7 +1,8 @@
 *__pycache__
 *.pyc
 data/*
-models/*
+**/models/*
+**/results/*
 pretrained/*
 predictions/*
 **/stanford*/*
