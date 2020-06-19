@@ -5,8 +5,8 @@ dygie_dir=../..
 
 cd $dygie_dir
 data_root="./data/UnifiedData/covid_anno_par/mapped/mech_effect"
-config_file="./training_config/chemprot.jsonnet"
-cuda_device=0,1
+config_file="./training_config/scierc_lightweight.jsonnet"
+cuda_device=0
 
 # Train model.
 ie_train_data_path=$data_root/train.json \
