@@ -26,7 +26,7 @@ local params = {
   use_bert_base: false,
   use_bert_large: false,
   use_scibert: true,
-  finetune_bert: true,
+  finetune_bert: false,
   rel_prop: 0,
   coref_prop: 1,
   context_width: 1,
@@ -69,28 +69,27 @@ local params = {
   events_positive_label_weight: 1.0,
 
   // Model training
-  batch_size: 8,
-  instances_per_epoch: 1000,
+  batch_size: 4,
   num_epochs: 250,
   patience: 15,
   optimizer: {
-    type: "bert_adam",
-    lr: 1e-3,
-    warmup: 0.1,
-    t_total: 10000,
-    weight_decay: 0.0,
+    type: "adam",
+    lr: 1e-4,
+//    warmup: 0.1,
+//    t_total: 100,
+    weight_decay: 0.01,
     parameter_groups: [
       [["_text_field_embedder"],
        {"lr": 5e-5,
-        "warmup": 0.2,
-        "t_total": 10000,
+  //      "warmup": 0.2,
+  //      "t_total": 100,
         "weight_decay": 0.01,
-        "finetune": true},],
+        "finetune": false},],
     ],
   },
   learning_rate_scheduler:  {
     type: "reduce_on_plateau",
-    factor: 0.5,
+    factor: 0.05,
     mode: "max",
     patience: 4
   }
