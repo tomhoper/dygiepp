@@ -1,6 +1,15 @@
 // Import template file.
 
-local template = import "template_dw.libsonnet";
+local template = import "/home/aida/covid_clean/dygiepp/training_config/template_dw.libsonnet";
+
+
+############# Variables to search
+
+
+local BATCH_SIZE = std.parseInt(std.extVar("BATCH_SIZE"));
+local DROPOUT = std.extVar("DROPOUT");
+local LEARNING_RATE = std.extVar("LEARNING_RATE");
+local HIDDEN_SIZE = std.parseInt(std.extVar("HIDDEN_SIZE"));
 
 ////////////////////
 
@@ -34,14 +43,14 @@ local params = {
   rel_prop_dropout_f: 0.0,
 
   // Specifies the model parameters.
-  lstm_hidden_size: 200,
+  lstm_hidden_size: HIDDEN_SIZE,
   lstm_n_layers: 1,
   feature_size: 20,
   feedforward_layers: 2,
   char_n_filters: 50,
   feedforward_dim: 150,
   max_span_width: 8,
-  feedforward_dropout: 0.4,
+  feedforward_dropout: DROPOUT,
   lexical_dropout: 0.5,
   lstm_dropout: 0.0,
   loss_weights: {          // Loss weights for the modules.
@@ -69,13 +78,13 @@ local params = {
   events_positive_label_weight: 1.0,
 
   // Model training
-  batch_size: 8,
+  batch_size: BATCH_SIZE,
   instances_per_epoch: 1000,
   num_epochs: 250,
   patience: 15,
   optimizer: {
     type: "bert_adam",
-    lr: 1e-3,
+    lr: LEARNING_RATE,
     warmup: 0.1,
     t_total: 10000,
     weight_decay: 0.0,
