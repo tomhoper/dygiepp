@@ -88,6 +88,9 @@ if __name__ == '__main__':
                     relations_size += len(rel_list)
                 if relations_size > 0:
                     new_jsons.append(obj)
+                else:
+                    new_jsons.append(obj)
+                    print("removed")
 
         with jsonlines.open(str(fold_mapped).rstrip("l"), 'w') as writer:
             writer.write_all(new_jsons)

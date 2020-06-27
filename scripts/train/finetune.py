@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--config',
                         type=str,
-                        default="./training_config/scierc_working_example.jsonnet",
+                        default="./training_config/config-train-covid.jsonnet",
                         help='training config',
                         required=False)
  
@@ -80,7 +80,8 @@ if __name__ == '__main__':
 
     allennlp_command = [
             "allennlp",
-            "train",
+            "fine-tune",
+            
             config_file,
             "--cache-directory",
             str(cachedir),

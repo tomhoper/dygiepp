@@ -22,7 +22,13 @@ if __name__ == '__main__':
 
     parser.add_argument('--config',
                         type=str,
-                        default="./training_config/scierc_working_example.jsonnet",
+                        default="./training_config/scierc_working_allentune.jsonnet",
+                        help='training config',
+                        required=False)
+
+    parser.add_argument('--search_space',
+                        type=str,
+                        default="./training_config/search_space.json",
                         help='training config',
                         required=False)
  
@@ -41,6 +47,17 @@ if __name__ == '__main__':
 
     parser.add_argument('--single_source',
                         action='store_true')
+
+    parser.add_argument('--gpu_count',
+                        type=int,
+                        default=3,
+                        required=False,
+                        help="cuda devices comma seperated")
+    parser.add_argument('--num_samples',
+                        type=int,
+                        default=3,
+                        required=False,
+                        help="cuda devices comma seperated")
 
     parser.add_argument('--device',
                         type=str,
@@ -61,7 +78,10 @@ if __name__ == '__main__':
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech'
 
 
+    gpu_count = args.gpu_count
+    num_samples = args.num_samples
     config_file = args.config
+    search_space = args.search_space
     experiment_name = args.data_combo
     os.environ['experiment_name'] = str(experiment_name)
     
@@ -79,17 +99,31 @@ if __name__ == '__main__':
         os.environ['cuda_device'] = args.device
 
     allennlp_command = [
-            "allennlp",
-            "train",
-            config_file,
-            "--cache-directory",
-            str(cachedir),
-            "--serialization-dir",
+            "ie_train_data_path=" + str(ie_train_data_path),
+            "ie_dev_data_path=" + str(ie_dev_data_path),
+            "ie_test_data_path=" + str(ie_test_data_path),
+            "allentune",
+            "search",
+            "--experiment-name",
             str(serial_dir),
+            "--num-gpus",
+            str(gpu_count),
+            "--gpus-per-trial",
+            str(gpu_count),
+            "--search-space",
+            search_space,
+            "--num-samples",
+            str(num_samples),
+            "--base-config",
+            config_file            ,
             "--include-package",
             "dygie"
     ]
-    
-   
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
+
+
+
+
+
+
 
