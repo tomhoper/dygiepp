@@ -69,25 +69,25 @@ if __name__ == '__main__':
     #check prediction label mapping matches the loaded gold file
     print(predf["rel"].unique())
     print(golddf["rel"].unique())
-    assert len(predf["rel"].unique()) == len(golddf["rel"].unique())
+    # assert len(predf["rel"].unique()) == len(golddf["rel"].unique())
     prediction_dict[str(args.data_combo)] = predf[["id","arg0","arg1","rel","conf"]]
 
 
     # get dep-parse relations and all pairs relations, place in prediction_dict
     # both baselines can use nnp, NER, or a combo
-    dep_relations = depparse_base(golddf,pair_type="NNP")
-    allpairs_relations = allpairs_base(golddf,pair_type="NNP")
-    prediction_dict["depparsennp"] = pd.DataFrame(dep_relations,columns=["id","arg0","arg1"])
-    prediction_dict["allpairsnnp"] = pd.DataFrame(allpairs_relations,columns=["id","arg0","arg1"])
+    # dep_relations = depparse_base(golddf,pair_type="NNP")
+    # allpairs_relations = allpairs_base(golddf,pair_type="NNP")
+    # prediction_dict["depparsennp"] = pd.DataFrame(dep_relations,columns=["id","arg0","arg1"])
+    # prediction_dict["allpairsnnp"] = pd.DataFrame(allpairs_relations,columns=["id","arg0","arg1"])
 
 
     #get SRL relations and openIE relations, place in prediction_dict
-    predictor_ie = get_openie_predictor()
-    predictor_srl = get_srl_predictor()
-    srl_relations = allenlp_base_relations(predictor_srl,golddf)
-    ie_relations = allenlp_base_relations(predictor_ie,golddf)
-    prediction_dict["srl"] = pd.DataFrame(srl_relations,columns=["id","arg0","arg1"])
-    prediction_dict["openie"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
+    # predictor_ie = get_openie_predictor()
+    # predictor_srl = get_srl_predictor()
+    # srl_relations = allenlp_base_relations(predictor_srl,golddf)
+    # ie_relations = allenlp_base_relations(predictor_ie,golddf)
+    # prediction_dict["srl"] = pd.DataFrame(srl_relations,columns=["id","arg0","arg1"])
+    # prediction_dict["openie"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
     
     #get results
     res_list = []

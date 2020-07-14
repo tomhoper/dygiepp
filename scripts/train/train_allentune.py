@@ -55,7 +55,7 @@ if __name__ == '__main__':
                         help="cuda devices comma seperated")
     parser.add_argument('--num_samples',
                         type=int,
-                        default=3,
+                        default=30,
                         required=False,
                         help="cuda devices comma seperated")
 
