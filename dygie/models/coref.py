@@ -75,6 +75,7 @@ class CorefResolver(Model):
         self._max_antecedents = max_antecedents
 
         self._mention_recall = MentionRecall()
+        # self._mention_recall = None
         self._conll_coref_scores = ConllCorefScores()
 
         self.coref_prop = coref_prop
