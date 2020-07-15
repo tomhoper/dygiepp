@@ -6,6 +6,7 @@ import itertools
 import scispacy
 import spacy
 import numpy as np
+import copy
 from collections import defaultdict
 spacy_nlp = spacy.load('en_core_web_sm')
 spacy_stopwords = spacy.lang.en.stop_words.STOP_WORDS
@@ -159,10 +160,45 @@ def depparse_base(golddf,pair_type="NNP"):
                                 _=[relations.append((row[1]["id"],m.text, e.text)) for m in matches]
     return relations
 
-def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_thresh=0.5):
+
+def find_transivity_relations(rels):
+    new_added = True
+    seen_new = []
+    while new_added:
+        new_list = [x for x in rels.iterrows()]
+        new_added = False
+        print(len([x for x in rels.iterrows()]))
+        for row1 in new_list:
+            for row2 in new_list:
+
+                if row1[1].equals(row2[1]):
+                    continue
+                if row1[1]['arg1'] == row2[1]['arg0'] and (row1[1]['arg0'], row2[1]['arg1']) not in seen_new:
+                  new_data = {'id': [row1[0] + '_t'] , 
+                              'arg0': [row1[1]['arg0']],
+                              'arg1': [row2[1]['arg1']]
+                              }
+
+                  if "rel" in rels.columns:
+                    new_data['rel']: [row1[1]['rel']]
+                  if "conf" in rels.columns:
+                    new_data['conf']: [row1[1]['conf'] * row2[1]['conf']]
+                  
+                  seen_new.append((row1[1]['arg0'], row2[1]['arg1']))
+                  df = pd.DataFrame(new_data).set_index("id",inplace=False)
+                  rels = rels.append(df)
+                  new_added = True
+
+    return rels
+
+def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_thresh=0.5, transivity=True):
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
+    
+    if transivity:
+        goldrels = find_transivity_relations(goldrels)
+
     #only get rel for our model / gold, otherwise assume one collapsed label
     if "conf" in relations.columns:
         predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
