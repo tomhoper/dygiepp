@@ -71,7 +71,7 @@ def span_matching(span1,span2,metric,thresh=None):
         raise NotImplementedError
     return match
 
-def relation_matching(pair,metric,labels=[1,1],thresh=0.5,filter_stop=False,span_mode = False):
+def relation_matching(pair, metric, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False):
       match = False
       arg0match = False
       arg1match = False
@@ -89,6 +89,15 @@ def relation_matching(pair,metric,labels=[1,1],thresh=0.5,filter_stop=False,span
               arg1match = True
               if labels[0]==labels[1]:
                 match=True
+      # considering the reverse direction for evaluating relation
+      if consider_reverse == True and match == False:
+        if span_matching(p1[0],p2[1],metric,thresh):
+          arg0match = True
+          if span_matching(p1[1],p2[0],metric,thresh):
+              arg1match = True
+              if labels[0]==labels[1]:
+                match=True
+
       if span_mode:
           return (arg0match or arg1match) and labels[0]==labels[1]
       return match
@@ -167,7 +176,6 @@ def find_transivity_relations(rels):
     while new_added:
         new_list = [x for x in rels.iterrows()]
         new_added = False
-        print(len([x for x in rels.iterrows()]))
         for row1 in new_list:
             for row2 in new_list:
                 if (row1[0] != row2[0]):  #we want to find transivity within same document
@@ -196,15 +204,16 @@ def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
-    
-    if transivity:
-        goldrels = find_transivity_relations(goldrels)
 
     #only get rel for our model / gold, otherwise assume one collapsed label
     if "conf" in relations.columns:
         predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
     else:
         predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
+
+    if transivity:
+        goldrels = find_transivity_relations(goldrels)
+        predrels = find_transivity_relations(predrels) 
 
     good_preds = []
     seen_pred_gold = {}
