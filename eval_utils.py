@@ -170,11 +170,12 @@ def find_transivity_relations(rels):
         print(len([x for x in rels.iterrows()]))
         for row1 in new_list:
             for row2 in new_list:
-
+                if (row1[0] != row2[0]):  #we want to find transivity within same document
+                    continue
                 if row1[1].equals(row2[1]):
                     continue
                 if row1[1]['arg1'] == row2[1]['arg0'] and (row1[1]['arg0'], row2[1]['arg1']) not in seen_new:
-                  new_data = {'id': [row1[0] + '_t'] , 
+                  new_data = {'id': [row1[0] + ''] , 
                               'arg0': [row1[1]['arg0']],
                               'arg1': [row2[1]['arg1']]
                               }
