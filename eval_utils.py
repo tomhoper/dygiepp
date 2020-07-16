@@ -241,14 +241,14 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
         predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
 
     if transivity:
-        goldrels = find_transivity_relations(goldrels)
-        predrels = find_transivity_relations(predrels) 
+        goldrels_trans = find_transivity_relations(goldrels)
+        predrels_trans = find_transivity_relations(predrels) 
 
     good_preds = []
     seen_pred_gold = {}
     for i in predrels.index.unique():
-        if i in goldrels.index.unique():
-            gold = goldrels.loc[i]
+        if i in goldrels_trans.index.unique():
+            gold = goldrels_trans.loc[i]
             coref_rels = None
             if coref != None:
                 coref_rels = corefrels.loc[i]
