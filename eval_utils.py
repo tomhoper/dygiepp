@@ -11,6 +11,7 @@ from collections import defaultdict
 spacy_nlp = spacy.load('en_core_web_sm')
 spacy_stopwords = spacy.lang.en.stop_words.STOP_WORDS
 nlp = spacy.load("en_core_sci_sm")
+
 from rouge import Rouge 
 rouge = Rouge()
 
@@ -37,7 +38,7 @@ def allenlp_base_relations(predictor,eval_df):
             relsv = [r.lstrip("V:") for r in rels if r.startswith("V")]
             rels0 = [r.lstrip("ARG0:") for r in rels if r.startswith("ARG0")]
             rels1 = [r.lstrip("ARG1:") for r in rels if r.startswith("ARG1")]
-            if len(relsv) and len(rels0) and len(rels1):
+            if len(relsv) and len(rels0) amatnd len(rels1):
                 relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0]])
         i+=1
     return relations
@@ -49,6 +50,7 @@ def jaccard_similarity(list1, list2):
 
 def filter_stopwords(tokens):
     return " ".join([t for t in tokens if t.lower() not in spacy_stopwords])
+
 
 
 def span_matching(span1,span2,metric,thresh=None):
@@ -71,36 +73,61 @@ def span_matching(span1,span2,metric,thresh=None):
         raise NotImplementedError
     return match
 
-def relation_matching(pair, metric, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False):
-      match = False
+def read_coref_matches(word_list, coref_rels):
+    #TODO
+    for row in coref_rels.iterrows():
+        if row[1]['arg0'] == word_list[0]:
+            word_list.append(row[1]['arg1'])
+        if row[1]['arg1'] == word_list[0]:
+            word_list.append(row[1]['arg0'])
+    return word_list
+
+def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False, coref_match=True):
+      #changing this so that it can check all the coref matches of args.
       arg0match = False
       arg1match = False
       p1 = pair[0]
       p2 = pair[1]
-      if metric=="head":
-          filter_stop = False
-      if filter_stop:
-        p1 = [filter_stopwords(p1[0].split()),filter_stopwords(p1[1].split())]
-        p2 = [filter_stopwords(p2[0].split()),filter_stopwords(p2[1].split())]
+      pair1_list_arg0 = [p1[0]]
+      pair1_list_arg1 = [p1[1]]
+      pair2_list_arg0 = [p1[0]]
+      pair2_list_arg1 = [p1[2]]
+      if coref_match:
+        pair1_list_arg0 = read_coref_matches(pair1_list_arg0)
+        pair1_list_arg1 = read_coref_matches(pair1_list_arg1)
+        pair2_list_arg0 = read_coref_matches(pair2_list_arg0)
+        pair2_list_arg1 = read_coref_matches(pair2_list_arg1)
 
-      if span_matching(p1[0],p2[0],metric,thresh):
-          arg0match = True
-          if span_matching(p1[1],p2[1],metric,thresh):
-              arg1match = True
-              if labels[0]==labels[1]:
-                match=True
-      # considering the reverse direction for evaluating relation
-      if consider_reverse == True and match == False:
-        if span_matching(p1[0],p2[1],metric,thresh):
-          arg0match = True
-          if span_matching(p1[1],p2[0],metric,thresh):
-              arg1match = True
-              if labels[0]==labels[1]:
-                match=True
+      for pair1_arg0 in pair1_list_arg0:
+        for pair1_arg1 in pair1_list_arg1:
+            for pair2_arg0 in pair2_list_arg0:
+                for pair2_arg1 in pair2_list_arg1:
+
+
+                  if metric=="head":
+                      filter_stop = False
+                  if filter_stop:
+                    p1 = [filter_stopwords(p1[0].split()),filter_stopwords(p1[1].split())]
+                    p2 = [filter_stopwords(p2[0].split()),filter_stopwords(p2[1].split())]
+
+                  if span_matching(pair1_arg0,pair2_arg0,metric,thresh):
+                      arg0match = True
+                      if span_matching(pair1_arg1,pair2_arg1,metric,thresh):
+                          arg1match = True
+                          if labels[0]==labels[1]:
+                            return True
+                  # considering the reverse direction for evaluating relation
+                  if consider_reverse == True and match == False:
+                    if span_matching(pair1_arg0,pair2_arg1,metric,thresh):
+                      arg0match = True
+                      if span_matching(pair1_arg1,pair2_arg0,metric,thresh):
+                          arg1match = True
+                          if labels[0]==labels[1]:
+                            return True
 
       if span_mode:
           return (arg0match or arg1match) and labels[0]==labels[1]
-      return match
+      return False
 
 def allpairs_base(golddf,pair_type="NNP"):
     print("loading scispacy model for dep parse and NER...")
@@ -200,11 +227,13 @@ def find_transivity_relations(rels):
 
     return rels
 
-def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_thresh=0.5, transivity=True):
+def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True):
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
 
+    if coref != None:
+        corefrels = coref.set_index("id")
     #only get rel for our model / gold, otherwise assume one collapsed label
     if "conf" in relations.columns:
         predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
@@ -220,6 +249,9 @@ def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_
     for i in predrels.index.unique():
         if i in goldrels.index.unique():
             gold = goldrels.loc[i]
+            coref_rels = None
+            if coref != None:
+                coref_rels = corefrels.loc[i]
             if type(predrels.loc[i]) == pd.core.series.Series:
                 preds = [predrels.loc[i].values]
             else:
@@ -230,8 +262,9 @@ def ie_eval(relations,golddf,collapse = False, match_metric="substring",jaccard_
                     labels = [1,1]
                 else:
                     labels = [pair[0][2],pair[1][2]]
-                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh)
-                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
+                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels)
+                #changing this so that it can check all the coref matches of args.if m and
+                 ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     
                     good_preds.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
