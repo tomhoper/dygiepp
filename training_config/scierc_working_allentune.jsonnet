@@ -1,6 +1,6 @@
 // Import template file.
 
-local template = import "/home/aida/covid_clean/dygiepp/training_config/template_dw.libsonnet";
+local template = import "/net/nfs2.corp/s2-research/tomh/dygiepp/training_config/template_dw.libsonnet";
 
 
 ############# Variables to search
