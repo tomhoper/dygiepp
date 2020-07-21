@@ -142,7 +142,7 @@ function(p) {
       type: "bert-pretrained",
       pretrained_model: (if p.use_bert_base then "bert-base-cased"
                          else if p.use_bert_large then "bert-large-cased"
-                         else "/home/aida/covid_clean/dygiepp/pretrained/scibert_scivocab_cased/vocab.txt"),
+                         else "/net/nfs2.corp/s2-research/tomh//dygiepp/pretrained/scibert_scivocab_cased/vocab.txt"),
       do_lowercase: false,
       use_starting_offsets: true
     }
@@ -185,7 +185,7 @@ function(p) {
         type: "bert-pretrained",
         pretrained_model: (if p.use_bert_base then "bert-base-cased"
                            else if p.use_bert_large then "bert-large-cased"
-                           else "/home/aida/covid_clean/dygiepp/pretrained/scibert_scivocab_cased/weights.tar.gz"),
+                           else "/net/nfs2.corp/s2-research/tomh//dygiepp/pretrained/scibert_scivocab_cased/weights.tar.gz"),
         requires_grad: p.finetune_bert
       }
     }
