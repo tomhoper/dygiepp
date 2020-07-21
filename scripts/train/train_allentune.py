@@ -33,7 +33,7 @@ if __name__ == '__main__':
                         required=False)
  
     parser.add_argument('--data_combo',
-                        type=Path,
+                        type=str,
                         help='root dataset folder, contains mapped/mech, mapped/mech_effect and then train,dev,test',
                         required=True)
 
@@ -45,14 +45,12 @@ if __name__ == '__main__':
     parser.add_argument('--mech_effect_mode',
                         action='store_true')
 
-    parser.add_argument('--single_source',
-                        action='store_true')
-
     parser.add_argument('--gpu_count',
                         type=int,
                         default=3,
                         required=False,
                         help="cuda devices comma seperated")
+    
     parser.add_argument('--num_samples',
                         type=int,
                         default=30,
@@ -66,7 +64,7 @@ if __name__ == '__main__':
                         help="cuda devices comma seperated")
 
     args = parser.parse_args()
-    if args.single_source:
+    if ',' not in args.data_combo:
         data_root_dir = "UnifiedData"
     else:
         data_root_dir = "combo"
@@ -82,7 +80,7 @@ if __name__ == '__main__':
     num_samples = args.num_samples
     config_file = args.config
     search_space = args.search_space
-    experiment_name = args.data_combo
+    experiment_name = '_'.join(args.data_combo.split(','))
     os.environ['experiment_name'] = str(experiment_name)
     
     cachedir = data_root/"cached"
