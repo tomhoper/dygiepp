@@ -42,6 +42,10 @@ class AllenNlpRunner(object):
             for k, v in sample.items():
                 config[k] = str(v)
             
+            config["ie_train_data_path"] = os.environ["ie_train_data_path"]
+            config["ie_dev_data_path"] = os.environ["ie_dev_data_path"]
+            config["ie_test_data_path"] = os.environ["ie_test_data_path"]
+            config["cuda_device"] = os.environ["cuda_device"]
             params_dict = json.loads(
                 _jsonnet.evaluate_snippet(
                     "config", parameter_file_snippet, tla_codes={}, ext_vars=config

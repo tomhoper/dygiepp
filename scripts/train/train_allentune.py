@@ -68,19 +68,21 @@ if __name__ == '__main__':
         data_root_dir = "UnifiedData"
     else:
         data_root_dir = "combo"
+    
+    experiment_name = '_'.join(args.data_combo.split(','))
     if args.mech_effect_mode == True:
-        data_root = pathlib.Path(args.root) / data_root_dir / args.data_combo / 'mapped' / 'mech_effect'
-        serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech_effect'
+        data_root = pathlib.Path(args.root) / data_root_dir / experiment_name / 'mapped' / 'mech_effect'
+        serial_dir = pathlib.Path(args.root) / 'experiments' / experiment_name / 'mapped' / 'mech_effect'
     if args.mech_effect_mode == False:
-        data_root = pathlib.Path(args.root) / data_root_dir / args.data_combo / 'mapped' / 'mech'
-        serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech'
+        data_root = pathlib.Path(args.root) / data_root_dir / experiment_name / 'mapped' / 'mech'
+        serial_dir = pathlib.Path(args.root) / 'experiments' / experiment_name / 'mapped' / 'mech'
 
 
     gpu_count = args.gpu_count
     num_samples = args.num_samples
     config_file = args.config
     search_space = args.search_space
-    experiment_name = '_'.join(args.data_combo.split(','))
+    
     os.environ['experiment_name'] = str(experiment_name)
     
     cachedir = data_root/"cached"
@@ -95,11 +97,8 @@ if __name__ == '__main__':
     if args.device:
         os.environ['CUDA_DEVICE'] = args.device
         os.environ['cuda_device'] = args.device
-
+    
     allennlp_command = [
-            "ie_train_data_path=" + str(ie_train_data_path),
-            "ie_dev_data_path=" + str(ie_dev_data_path),
-            "ie_test_data_path=" + str(ie_test_data_path),
             "allentune",
             "search",
             "--experiment-name",
@@ -117,6 +116,7 @@ if __name__ == '__main__':
             "--include-package",
             "dygie"
     ]
+    import pdb; pdb.set_trace()
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
 
 
