@@ -116,7 +116,7 @@ if __name__ == '__main__':
             "--include-package",
             "dygie"
     ]
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)
 
 
