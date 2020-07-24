@@ -81,6 +81,7 @@ if __name__ == '__main__':
 
 
     gpu_count = args.gpu_count
+    cpu_count = args.cpu_count
     num_samples = args.num_samples
     config_file = args.config
     search_space = args.search_space
@@ -97,8 +98,8 @@ if __name__ == '__main__':
     os.environ['ie_test_data_path'] = str(ie_test_data_path)
 
     if args.gpu_count > 0:
-        os.environ['CUDA_DEVICE'] = [i for i in range(args.gpu_count)]
-        os.environ['cuda_device'] = [i for i in range(args.gpu_count)]
+        os.environ['CUDA_DEVICE'] = ",".join([str(i) for i in range(args.gpu_count)])
+        os.environ['cuda_device'] = ",".join([str(i) for i in range(args.gpu_count)])
     
     allennlp_command = [
             "allentune",
@@ -108,9 +109,11 @@ if __name__ == '__main__':
             "--num-gpus",
             str(gpu_count),
             "--gpus-per-trial",
-            "1",
-            "num-cpus",
-            "1",       
+            str(gpu_count),
+            "--num-cpus",
+            str(cpu_count),  
+            "--cpus-per-trial",
+            str(cpu_count),  
             "--search-space",
             search_space,
             "--num-samples",
