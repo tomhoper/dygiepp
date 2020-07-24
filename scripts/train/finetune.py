@@ -27,7 +27,7 @@ if __name__ == '__main__':
                         required=False)
  
     parser.add_argument('--data_combo',
-                        type=Path,
+                        type=str,
                         help='root dataset folder, contains mapped/mech, mapped/mech_effect and then train,dev,test',
                         required=True)
 
@@ -39,8 +39,6 @@ if __name__ == '__main__':
     parser.add_argument('--mech_effect_mode',
                         action='store_true')
 
-    parser.add_argument('--single_source',
-                        action='store_true')
 
     parser.add_argument('--device',
                         type=str,
@@ -49,7 +47,8 @@ if __name__ == '__main__':
                         help="cuda devices comma seperated")
 
     args = parser.parse_args()
-    if args.single_source:
+    if ',' not in args.data_combo:
+        args.data_combo = args.data_combo.replace(",", "_")
         data_root_dir = "UnifiedData"
     else:
         data_root_dir = "combo"
@@ -81,7 +80,6 @@ if __name__ == '__main__':
     allennlp_command = [
             "allennlp",
             "fine-tune",
-            
             config_file,
             "--cache-directory",
             str(cachedir),

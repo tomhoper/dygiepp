@@ -50,18 +50,20 @@ if __name__ == '__main__':
                         default=3,
                         required=False,
                         help="cuda devices comma seperated")
+
+    parser.add_argument('--cpu_count',
+                        type=int,
+                        default=32,
+                        required=False,
+                        help="cuda devices comma seperated")
     
     parser.add_argument('--num_samples',
                         type=int,
                         default=30,
                         required=False,
-                        help="cuda devices comma seperated")
+                        help="")
 
-    parser.add_argument('--device',
-                        type=str,
-                        default='1,2,3',
-                        required=False,
-                        help="cuda devices comma seperated")
+
 
     args = parser.parse_args()
     if ',' not in args.data_combo:
@@ -94,9 +96,9 @@ if __name__ == '__main__':
     os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
     os.environ['ie_test_data_path'] = str(ie_test_data_path)
 
-    if args.device:
-        os.environ['CUDA_DEVICE'] = args.device
-        os.environ['cuda_device'] = args.device
+    if args.gpu_count > 0:
+        os.environ['CUDA_DEVICE'] = [i for i in range(args.gpu_count)]
+        os.environ['cuda_device'] = [i for i in range(args.gpu_count)]
     
     allennlp_command = [
             "allentune",
@@ -106,7 +108,9 @@ if __name__ == '__main__':
             "--num-gpus",
             str(gpu_count),
             "--gpus-per-trial",
-            str(gpu_count),
+            "1",
+            "num-cpus",
+            "1",       
             "--search-space",
             search_space,
             "--num-samples",
