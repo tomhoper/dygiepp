@@ -7,6 +7,7 @@ import scispacy
 import spacy
 import numpy as np
 import copy
+import json
 from collections import defaultdict
 spacy_nlp = spacy.load('en_core_web_sm')
 spacy_stopwords = spacy.lang.en.stop_words.STOP_WORDS
@@ -24,7 +25,7 @@ def get_srl_predictor():
     srlpredictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/bert-base-srl-2020.03.24.tar.gz")
     return(srlpredictor)
 
-def allenlp_base_relations(predictor,eval_df):
+def allenlp_base_relations(predictor,eval_df,four_col=False):
     uniquetext = eval_df.drop_duplicates(subset=["text"])
     print("getting predictions...")
     d = [{"sentence":t} for t in uniquetext.text.values]
@@ -38,14 +39,22 @@ def allenlp_base_relations(predictor,eval_df):
             relsv = [r.lstrip("V:") for r in rels if r.startswith("V")]
             rels0 = [r.lstrip("ARG0:") for r in rels if r.startswith("ARG0")]
             rels1 = [r.lstrip("ARG1:") for r in rels if r.startswith("ARG1")]
-            if len(relsv) and len(rels0) amatnd len(rels1):
-                relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0]])
+            if len(relsv) and len(rels0) and len(rels1):
+                if four_col:
+                    relations.append([uniquetext.iloc[i]["id"],uniquetext.iloc[i]["text"],rels0[0],rels1[0]])
+                else:
+                    relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0]])
         i+=1
     return relations
 
 def jaccard_similarity(list1, list2):
+
     s1 = set(list1)
     s2 = set(list2)
+    # print(type(list1))
+    # print(type(list2))
+    # print (s1)
+    # print (s2)
     return len(s1.intersection(s2)) / len(s1.union(s2))
 
 def filter_stopwords(tokens):
@@ -73,6 +82,12 @@ def span_matching(span1,span2,metric,thresh=None):
         raise NotImplementedError
     return match
 
+def convert_coref_json_to_tsv(file_path):
+    input_file = open(file_path)
+    for line in input_file:
+        data = json.loads(line)
+        import pdb; pdb.set_trace()
+
 def read_coref_matches(word_list, coref_rels):
     #TODO
     for row in coref_rels.iterrows():
@@ -82,16 +97,20 @@ def read_coref_matches(word_list, coref_rels):
             word_list.append(row[1]['arg0'])
     return word_list
 
-def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False, coref_match=True):
+def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False, coref_match=False):
       #changing this so that it can check all the coref matches of args.
       arg0match = False
       arg1match = False
       p1 = pair[0]
       p2 = pair[1]
+      if type(labels[0])=="str" and "USED" in labels[0]:
+        labels[0] = "USED"
+      if type(labels[1])=="str" and "USED" in labels[1]:
+        labels[1] = "USED"
       pair1_list_arg0 = [p1[0]]
       pair1_list_arg1 = [p1[1]]
-      pair2_list_arg0 = [p1[0]]
-      pair2_list_arg1 = [p1[2]]
+      pair2_list_arg0 = [p2[0]]
+      pair2_list_arg1 = [p2[1]]
       if coref_match:
         pair1_list_arg0 = read_coref_matches(pair1_list_arg0)
         pair1_list_arg1 = read_coref_matches(pair1_list_arg1)
@@ -102,7 +121,7 @@ def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, f
         for pair1_arg1 in pair1_list_arg1:
             for pair2_arg0 in pair2_list_arg0:
                 for pair2_arg1 in pair2_list_arg1:
-
+            
 
                   if metric=="head":
                       filter_stop = False
@@ -129,7 +148,7 @@ def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, f
           return (arg0match or arg1match) and labels[0]==labels[1]
       return False
 
-def allpairs_base(golddf,pair_type="NNP"):
+def allpairs_base(golddf,pair_type="NNP",four_col=False):
     print("loading scispacy model for dep parse and NER...")
     #https://github.com/allenai/scispacy#available-models
     nlp = spacy.load("en_core_sci_sm")
@@ -145,14 +164,17 @@ def allpairs_base(golddf,pair_type="NNP"):
             elif pair_type=="joint":
                 spans = [nnp.text for nnp in sent.noun_chunks] + [ent.text for ent in sent.ents]
             nnp_pairs = list(itertools.combinations(spans,2)) + list(itertools.combinations(spans[::-1],2))
-            abstract2np[row[1].id]+=nnp_pairs
+            abstract2np[(row[1].id,row[1].text)]+=nnp_pairs
 
     relations = []
     for k,v in abstract2np.items():
-        _=[relations.append((k,m[0],m[1])) for m in v]
+        if four_col:
+            _=[relations.append((k[0],k[1],m[0],m[1])) for m in v]
+        else:
+            _=[relations.append((k[0],m[0],m[1])) for m in v]
     return relations
 
-def depparse_base(golddf,pair_type="NNP"):
+def depparse_base(golddf,pair_type="NNP", four_col=False):
     relations = []
     print("loading scispacy model for dep parse and NER...")
     #https://github.com/allenai/scispacy#available-models
@@ -180,7 +202,10 @@ def depparse_base(golddf,pair_type="NNP"):
                         matches = np.array(nps)[np.where(matches)[0]]
                         matches = [item for sublist in matches for item in sublist]
                         if len(matches):
-                            _=[relations.append((row[1]["id"],m.text, e.text)) for m in matches]
+                            if four_col:
+                                _=[relations.append((row[1]["id"],row[1]["text"],m.text, e.text)) for m in matches]
+                            else:
+                                _=[relations.append((row[1]["id"],m.text, e.text)) for m in matches]
             if e.root.dep_ in ("nsubj"):
                 subject = [w for w in e.root.head.rights if w.dep_ in ["dobj","pobj"]]
                 if subject:
@@ -193,7 +218,11 @@ def depparse_base(golddf,pair_type="NNP"):
                             matches = np.array(nps)[np.where(matches)[0]]
                             matches = [item for sublist in matches for item in sublist]
                             if len(matches):
-                                _=[relations.append((row[1]["id"],m.text, e.text)) for m in matches]
+                                if four_col:
+                                    _=[relations.append((row[1]["id"],row[1]["text"],m.text, e.text)) for m in matches]
+                                else:
+                                    _=[relations.append((row[1]["id"],m.text, e.text)) for m in matches]
+
     return relations
 
 
@@ -219,6 +248,8 @@ def find_transivity_relations(rels):
                     new_data['rel']: [row1[1]['rel']]
                   if "conf" in rels.columns:
                     new_data['conf']: [row1[1]['conf'] * row2[1]['conf']]
+                  if "text" in rels.columns:
+                    new_data['text']: [row1[1]['text']]
                   
                   seen_new.append((row1[1]['arg0'], row2[1]['arg1']))
                   df = pd.DataFrame(new_data).set_index("id",inplace=False)
@@ -226,6 +257,74 @@ def find_transivity_relations(rels):
                   new_added = True
 
     return rels
+
+def annotation_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True):
+    # import pdb; pdb.set_trace()
+    goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
+
+    if coref != None:
+        corefrels = coref.set_index("id")
+    #only get rel for our model / gold, otherwise assume one collapsed label
+
+    predrels = relations[["id","arg0","arg1","rel","text"]].set_index("id",inplace=False)
+
+    if transivity:
+        goldrels_trans = find_transivity_relations(goldrels)
+        predrels_trans = find_transivity_relations(predrels) 
+
+    good_preds = []
+    seen_pred_gold = {}
+    for i in predrels.index.unique():
+        if i in goldrels_trans.index.unique():
+            gold = goldrels_trans.loc[i]
+            coref_rels = None
+            if coref != None:
+                coref_rels = corefrels.loc[i]
+            if type(predrels.loc[i]) == pd.core.series.Series:
+                preds = [predrels.loc[i].values]
+            else:
+                preds = predrels.loc[i].values
+            c = list(itertools.product(gold.values, preds))
+            for pair in c:
+                if collapse:
+                    labels = [1,1]
+                else:
+                    labels = [pair[0][2],pair[1][2]]
+                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels)
+                #changing this so that it can check all the coref matches of args.if m and
+                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
+                    
+                    good_preds.append([i,pair[0][0],pair[0][1]])
+                    seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
+    
+
+    common_count = 0.0
+    df1 = pd.DataFrame(goldrels_trans,columns=['text'])
+    df2 = pd.DataFrame(predrels,columns=['text'])
+  
+    gold_text = [x[1]['text'] for x in df1.iterrows()]
+    pred_text = [x[1]['text'] for x in df2.iterrows()]
+    
+      
+    for text in gold_text:
+        if text in pred_text:
+          common_count += 1.0
+    for text in pred_text:
+        if text in gold_text:
+          common_count += 1.0
+
+    if common_count == 0:
+        return 0
+    # common = df1.merge(df2, how='inner', indicator=False)
+    # common.dropna(inplace=True)
+    corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
+    corr_pred = corr_pred.drop_duplicates()
+    # import pdb; pdb.set_trace()
+    # if common.shape[0] == 0:
+    #     return 0
+    return 2*float(corr_pred.shape[0]/common_count)
+
 
 def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True):
     # import pdb; pdb.set_trace()
@@ -264,7 +363,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                     labels = [pair[0][2],pair[1][2]]
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels)
                 #changing this so that it can check all the coref matches of args.if m and
-                 ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
+                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     
                     good_preds.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
