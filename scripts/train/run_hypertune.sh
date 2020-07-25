@@ -10,5 +10,6 @@ else
    python scripts/train/train_allentune.py --root $1 --data_combo $2 --mech_effect_mode --gpu_count $5 --cpu_count $6 --num_samples $3 --covid_only_dev --dev_path $8
   else
    python scripts/train/train_allentune.py --root $1 --data_combo $2 --mech_effect_mode --gpu_count $5 --cpu_count $6 --num_samples $3
+  
   fi
 fi
