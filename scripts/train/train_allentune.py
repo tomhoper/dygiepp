@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--gpu_count',
                         type=int,
-                        default=3,
+                        default=4,
                         required=False,
                         help="cuda devices comma seperated")
 
@@ -99,6 +99,8 @@ if __name__ == '__main__':
 
     if args.gpu_count > 0:
         os.environ['CUDA_DEVICE'] = ",".join([str(i) for i in range(args.gpu_count)])
+        os.environ['CUDA_VISIBLE_DEVICES'] = ",".join([str(i) for i in range(args.gpu_count)])
+
         os.environ['cuda_device'] = ",".join([str(i) for i in range(args.gpu_count)])
     
     allennlp_command = [
@@ -109,17 +111,17 @@ if __name__ == '__main__':
             "--num-gpus",
             str(gpu_count),
             "--gpus-per-trial",
-            str(gpu_count),
+            str(1),
             "--num-cpus",
             str(cpu_count),  
             "--cpus-per-trial",
-            str(cpu_count),  
+            str(2),  
             "--search-space",
             search_space,
             "--num-samples",
             str(num_samples),
             "--base-config",
-            config_file            ,
+            config_file,
             "--include-package",
             "dygie"
     ]
