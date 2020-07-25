@@ -111,7 +111,7 @@ if __name__ == '__main__':
     os.environ['ie_test_data_path'] = str(ie_test_data_path)
 
     if args.covid_only_dev == True:
-        ie_dev_data_path =  pathlib.Path(args.root) / data_root_dir / args.dev_path / 'mapped' / 'mech' /"dev.json"
+        ie_dev_data_path =  pathlib.Path(args.root) / "UnifiedData" / args.dev_path / 'mapped' / 'mech' /"dev.json"
         os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
     else:
         os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
