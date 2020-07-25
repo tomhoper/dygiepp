@@ -45,6 +45,15 @@ if __name__ == '__main__':
     parser.add_argument('--mech_effect_mode',
                         action='store_true')
 
+    parser.add_argument('--covid_only_dev',
+                        action='store_true')
+
+    parser.add_argument('--dev_path',
+                        type=str,
+                        default="covid_anno_par_madeline",
+                        help='root dataset folder, contains mapped/mech, mapped/mech_effect and then train,dev,test',
+                        required=False)
+
     parser.add_argument('--gpu_count',
                         type=int,
                         default=3,
@@ -65,6 +74,7 @@ if __name__ == '__main__':
 
 
 
+
     args = parser.parse_args()
     if ',' not in args.data_combo:
         data_root_dir = "UnifiedData"
@@ -72,12 +82,16 @@ if __name__ == '__main__':
         data_root_dir = "combo"
     
     experiment_name = '_'.join(args.data_combo.split(','))
+    experiments_res_directory = experiment_name
+    if args.covid_only_dev:
+        experiments_res_directory = experiments_res_directory + "_covid_dev"
     if args.mech_effect_mode == True:
         data_root = pathlib.Path(args.root) / data_root_dir / experiment_name / 'mapped' / 'mech_effect'
-        serial_dir = pathlib.Path(args.root) / 'experiments' / experiment_name / 'mapped' / 'mech_effect'
+        serial_dir = pathlib.Path(args.root) / 'experiments' / experiments_res_directory / 'mapped' / 'mech_effect'
     if args.mech_effect_mode == False:
         data_root = pathlib.Path(args.root) / data_root_dir / experiment_name / 'mapped' / 'mech'
-        serial_dir = pathlib.Path(args.root) / 'experiments' / experiment_name / 'mapped' / 'mech'
+        serial_dir = pathlib.Path(args.root) / 'experiments' / experiments_res_directory / 'mapped' / 'mech'
+
 
 
     gpu_count = args.gpu_count
@@ -94,8 +108,13 @@ if __name__ == '__main__':
     ie_dev_data_path = data_root/"dev.json"
     ie_test_data_path = data_root/"test.json"
     os.environ['ie_train_data_path'] = str(ie_train_data_path)
-    os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
     os.environ['ie_test_data_path'] = str(ie_test_data_path)
+
+    if args.covid_only_dev == True:
+        ie_dev_data_path =  pathlib.Path(args.root) / data_root_dir / args.dev_path / 'mapped' / 'mech' /"dev.json"
+        os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
+    else:
+        os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
 
     if args.gpu_count > 0:
         os.environ['CUDA_DEVICE'] = ",".join([str(i) for i in range(args.gpu_count)])
