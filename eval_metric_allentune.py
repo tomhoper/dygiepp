@@ -70,13 +70,13 @@ if __name__ == '__main__':
 
         
         #read predictions, place in dictionary
-
+        run_index = file[4:file.index('_', 5)]
         prediction_dict = {}
         predf = pd.read_csv(PREDS_PATH, sep="\t",names=["id","text","arg0","arg1","rel","conf"])
         #check prediction label mapping matches the loaded gold file
         print(predf["rel"].unique())
         print(golddf["rel"].unique())
-        prediction_dict[str(args.data_combo)] = predf[["id","arg0","arg1","rel","conf"]]
+        prediction_dict[str(args.data_combo) + '_run_' + run_index] = predf[["id","arg0","arg1","rel","conf"]]
         
         res_list = []
         
