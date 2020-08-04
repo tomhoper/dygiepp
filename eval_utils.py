@@ -57,6 +57,9 @@ def jaccard_similarity(list1, list2):
     # print (s2)
     return len(s1.intersection(s2)) / len(s1.union(s2))
 
+def exact_match(span1, span2):
+    return span1.strip().lower() == span2.strip().lower()
+
 def filter_stopwords(tokens):
     return " ".join([t for t in tokens if t.lower() not in spacy_stopwords])
 
@@ -80,6 +83,8 @@ def span_matching(span1,span2,metric,thresh=None):
             return True
     elif metric =="rouge":
         raise NotImplementedError
+    elif metric == "exact":
+        return exact_match(span1, span2)
     return match
 
 def convert_coref_json_to_tsv(file_path):
@@ -103,9 +108,9 @@ def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, f
       arg1match = False
       p1 = pair[0]
       p2 = pair[1]
-      if type(labels[0])=="str" and "USED" in labels[0]:
+      if type(labels[0])==str and "USED" in labels[0]:
         labels[0] = "USED"
-      if type(labels[1])=="str" and "USED" in labels[1]:
+      if type(labels[1])==str and "USED" in labels[1]:
         labels[1] = "USED"
       pair1_list_arg0 = [p1[0]]
       pair1_list_arg1 = [p1[1]]
@@ -262,7 +267,7 @@ def annotation_eval(relations, golddf, coref=None, collapse = False, match_metri
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
-
+    # import pdb; pdb.set_trace()
     if coref != None:
         corefrels = coref.set_index("id")
     #only get rel for our model / gold, otherwise assume one collapsed label
@@ -325,8 +330,61 @@ def annotation_eval(relations, golddf, coref=None, collapse = False, match_metri
     #     return 0
     return 2*float(corr_pred.shape[0]/common_count)
 
+def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5):
+    goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
+    if "conf" in relations.columns:
+        predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
+    else:
+        predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
+    good_preds = []
+    gold_spans = []
+    pred_spans = []
+    seen_pred_gold = {}
+    for i in predrels.index.unique():
+        if i in goldrels.index.unique():
+            gold = goldrels.loc[i]
+            if type(predrels.loc[i]) == pd.core.series.Series:
+                preds = [predrels.loc[i].values]
+            else:
+                preds = predrels.loc[i].values
+            c = list(itertools.product(gold.values, preds))
+            for pair in c:
+                # import pdb; pdb.set_trace()
+                for pair0_ind in range(0,2):
+                    for pair1_ind in range(0,2):
+                        #adding gold and pred spans to have count for final calculations
+                        if [i,pair[1][pair1_ind]] not in pred_spans:
+                            pred_spans.append([i,pair[1][pair1_ind]])
+                        if [i,pair[0][pair0_ind]] not in gold_spans:
+                            gold_spans.append([i,pair[0][pair0_ind]])
 
-def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True):
+                        m = span_matching(pair[0][pair0_ind], pair[1][pair1_ind],match_metric,thresh=jaccard_thresh)   
+                        if m and ((i,pair[0][pair0_ind]) not in seen_pred_gold):
+                            good_preds.append([i,pair[0][pair0_ind]])
+                            seen_pred_gold[(i,pair[0][pair0_ind])]=1
+    
+    corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold"])
+    corr_pred = corr_pred.drop_duplicates()
+    
+    goldspans = pd.DataFrame(gold_spans,columns=["docid","arg0_gold"])
+    goldspans = goldspans.drop_duplicates()
+    predspans = pd.DataFrame(pred_spans,columns=["docid","arg0_gold"])
+    predspans = predspans.drop_duplicates()
+
+    # import pdb; pdb.set_trace()
+    TP = corr_pred.shape[0]
+    FP = predspans.shape[0] - TP
+    FN = goldspans.shape[0] - TP
+
+    precision = TP/(TP+FP)
+    recall = TP/(FN+TP)
+
+    F1 = 2*(precision * recall) / (precision + recall)
+
+    return corr_pred, precision,recall, F1
+
+def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None):
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
@@ -336,8 +394,13 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
     #only get rel for our model / gold, otherwise assume one collapsed label
     if "conf" in relations.columns:
         predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
+        predrels = predrels.sort_values(by='conf',ascending=False)
+        # if topK != None:
+        #     predrels = predrels[:topK]
     else:
         predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
+
+
 
     if transivity:
         goldrels_trans = find_transivity_relations(goldrels)
@@ -345,9 +408,10 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
 
     good_preds = []
     seen_pred_gold = {}
-    for i in predrels.index.unique():
+
+    for i in predrels[:topK].index.unique():
         if i in goldrels_trans.index.unique():
-            gold = goldrels_trans.loc[i]
+            gold = goldrels_trans.loc[[i]]
             coref_rels = None
             if coref != None:
                 coref_rels = corefrels.loc[i]
@@ -364,19 +428,19 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels)
                 #changing this so that it can check all the coref matches of args.if m and
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
-                    
+                    if len(pair[0][0]) == 1:
+                        import pdb; pdb.set_trace()
                     good_preds.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
     
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
     corr_pred = corr_pred.drop_duplicates()
     TP = corr_pred.shape[0]
-    FP = predrels.shape[0] - TP
+    FP = topK - TP
     FN = goldrels.shape[0] - TP
 
     precision = TP/(TP+FP)
     recall = TP/(FN+TP)
 
     F1 = 2*(precision * recall) / (precision + recall)
-
     return corr_pred, precision,recall, F1
