@@ -6,7 +6,7 @@ import subprocess
 from typing import Any, Dict
 import sys
 import pandas as pd
-from eval_utils import depparse_base, allpairs_base, get_openie_predictor,get_srl_predictor,allenlp_base_relations, ie_eval
+from eval_utils import depparse_base, allpairs_base, get_openie_predictor,get_srl_predictor,allenlp_base_relations, ie_eval, ie_span_eval
 import pathlib
 from pathlib import Path
 import pandas as pd
@@ -45,12 +45,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
-        gold_path = pathlib.Path(args.root) / 'gold' /  'mech_effect' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_madeline' /  'mech_effect' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
-        gold_path = pathlib.Path(args.root) / 'gold' /  'mech' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_madeline' /  'mech' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
@@ -91,7 +91,8 @@ if __name__ == '__main__':
     
     #get results
     res_list = []
-    
+    res_span_list = []
+
     for k,v in prediction_dict.items():
         print ("****")
         if not len(v):
@@ -102,23 +103,19 @@ if __name__ == '__main__':
             collapse_opt = [True]
         else:
             collapse_opt = [False,True]
-        for match_metric in ["jaccard","substring"]:
+        for match_metric in ["jaccard","substring","exact"]:
             for collapse in collapse_opt:
-
-                corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
-                res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.5]
-                res_list.append(res)
-                print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
-                if match_metric == "jaccard":
-                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.4)
-                    res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.4]
+                th_opts = [1]
+                if match_metric == 'jaccard':
+                    th_opts = [0.3, 0.4, 0.5]
+                for th in th_opts:
+                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th, topK=100)
+                    span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
+                    res = [k, precision, recall, F1, mech_effect, collapse, match_metric, th]
+                    res_span = [k, span_precision, span_recall, span_F1, match_metric, th]
                     res_list.append(res)
-                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
-                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3)
-                    res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.3]
-                    res_list.append(res)
-                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
-
+                    res_span_list.append(res_span)
+                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5} span_presicion: {6} span_recall: {7} span_F1: {8}'.format(k, collapse, match_metric, precision,recall, F1, span_precision,span_recall, span_F1))
 
         print ("****")
 
