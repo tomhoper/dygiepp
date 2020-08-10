@@ -81,6 +81,14 @@ prodigy rel.manual ner_rels_bio_tom blank:en ./bio_selected12.jsonl --label USED
 tom:
 prodigy rel.manual method_measure_tom blank:en ./human_annotations.jsonl --label USED-TO --span-label ENTITY
 curation annotations port 2222:
-prodigy rel.manual ner_rels_bio_tom_correction blank:en ./tom_curation_file.jsonl --label USED,EFFECT,DO --span-label ENTITY
-prodigy rel.manual tt blank:en ./tom_curation_file.jsonl --label USED,EFFECT,DO --span-label ENTITY
+prodigy rel.manual ner_rels_bio_tom_correction blank:en ./tom_curation2_file.jsonl --label USED,EFFECT,DO --span-label ENTITY
+prodigy rel.manual ner_rels_bio_tom_correction blank:en ./validation_input_tom_jeff.jsonl --label USED,EFFECT,DO --span-label ENTITY
+
+tom jeff validation  2223
+prodigy rel.manual ner_rels_bio_tom_correction blank:en ./validation_input_tom_kristina.jsonl --label USED,EFFECT,DO --span-label ENTITY
+tom kristina validation 2224
+
+
+tom_curation2_file
+
 

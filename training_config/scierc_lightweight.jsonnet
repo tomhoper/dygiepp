@@ -70,7 +70,6 @@ local params = {
 
   // Model training
   batch_size: 8,
-  instances_per_epoch: 1000,
   num_epochs: 250,
   patience: 15,
   optimizer: {

@@ -170,11 +170,13 @@ def write_all_annotations(name_list):
     print("correction_count" + str(correction_count))
     print("annotation_count" + str(annotation_count))
     print("validation_count" + str(validation_count))
+    return conmplete_set
 
 
 def create_validation_input(annotator_name, others_namelist):
     #add the annotations that are not corrected + correction indexes(all if full mode == true) 
     output_file = open("validation_input_" + annotator_name + ".jsonl", "w")
+    seen_annotations= []
     print("creating file " + "correction_input_" + annotator_name + ".jsonl")
     validation_data = []
     for name in others_namelist:
@@ -186,18 +188,26 @@ def create_validation_input(annotator_name, others_namelist):
         correction_other = ut.read_data_base(CORRECTION_DIR_PATH + "corrections_" + name + '.jsonl', name)
     
       correction_key_version_map = get_latest_correction_version(correction_other)
-
+      print(correction_other)
       for item in correction_other:
         doc_key = item['meta']['doc_key'].split('_::_')
+        if item['answer'] == "reject" or item['answer'] == 'ignore':
+          continue
         if len(doc_key) == 1 or (int(doc_key[1]) == correction_key_version_map[doc_key[0]]):
           validation_data.append(item)
 
       correction_doc_keys = get_list_of_ids(correction_other)
+
       for item in annotation_other:
+        if item['answer'] == "reject" or item['answer'] == 'ignore':
+          continue
         if (item['meta']['doc_key'], item['text']) not in correction_doc_keys:
-          validation_data.append(item)
+          if( item['meta']['doc_key'], item['text'] )not in seen_annotations:
+            validation_data.append(item)
+            seen_annotations.append( (item['meta']['doc_key'], item['text']) )
 
       print("validation data count so far : " + str(len(validation_data)))
+      print("validation data count so far : " + str(len(annotation_other)))
     
     for item in validation_data:
       json.dump(item, output_file)
@@ -208,6 +218,24 @@ def make_correction_data(data_list, output_file_name):
   for data in data_list:
       json.dump(data, output_file)
       output_file.write("\n")
+
+def write_annotations_for_tom_jsonl(complete_set):
+    already_annotated_list = ut.read_already_annotated(["ner_rels_bio_tom_correction"])
+    print(len(already_annotated_list))
+    output_file = open("tom_curation2_file.jsonl", "w")
+    count = 0
+    seen_list = [0 for x in range(len(already_annotated_list))]
+    for data in complete_set:
+      doc_key = data['meta']['doc_key']
+      answer = data['answer']
+      text = data['text']
+      if answer == "accept" and len(data['relations']) == 0:
+        count += 1
+      if answer == "accept" and len(data['relations']) > 0 and (doc_key, text) not in already_annotated_list:
+        json.dump(data, output_file)
+        output_file.write('\n')
+    print(count)
+
 
 
 if __name__ == "__main__":
@@ -236,8 +264,10 @@ if __name__ == "__main__":
   # ut.update_extractions(["aida"], "annotations/")
   # for name in name_list:
   #   create_correction_input(name, full_mode=False)
-  write_all_annotations(["madeline"])
-  # create_validation_input("madeline", ["sara", "megan"])
+  data = write_all_annotations(["madeline"])
+  write_annotations_for_tom_jsonl(data)
+  # create_validation_input("tom_jeff", ["jeff"])
+  # create_validation_input("tom_kristina", ["kristina"])
 
 
 

@@ -339,13 +339,13 @@ def create_annotated_covid(mech_flag, root_path, annotated_path):
     noise=False
     random.seed(100)
     if mech_flag== True:
-        DATA_PATH= root_path + "/UnifiedData/covid_anno_par/mapped/mech/"
+        DATA_PATH= root_path + "/UnifiedData/covid_anno_par_madeline/mapped/mech/"
     else:
-        DATA_PATH= root_path + "/UnifiedData/covid_anno_par/mapped/mech_effect/"
+        DATA_PATH= root_path + "/UnifiedData/covid_anno_par_madeline/mapped/mech_effect/"
     
     data_dir = pathlib.Path(DATA_PATH)
     data_dir.mkdir(parents=True, exist_ok=True)
-    TRAIN_COUNT = 60
+    TRAIN_COUNT = 80
     seen_ids = []
 
     doc_key_ind = {}
@@ -361,7 +361,7 @@ def create_annotated_covid(mech_flag, root_path, annotated_path):
         # import pdb; pdb.set_trace()
         
         if line_parts[-1] == "madeline":
-            print("madeline")
+            # print("madeline")
             count += 1
             if line_parts[0] not in madeline_keys:
                 madeline_keys.append(line_parts[0])
@@ -423,9 +423,9 @@ def create_annotated_covid_noise(mech_flag, root_path, annotated_path):
     random.seed(100)
 
     if mech_flag== True:
-        DATA_PATH_NOISY= root_path + "/UnifiedData/covid_anno_augmented_par/mapped/mech/"
+        DATA_PATH_NOISY= root_path + "/UnifiedData/covid_anno_augmented_par_madeline/mapped/mech/"
     else:
-        DATA_PATH_NOISY= root_path + "/UnifiedData/covid_anno_augmented_par/mapped/mech_effect/"
+        DATA_PATH_NOISY= root_path + "/UnifiedData/covid_anno_augmented_par_madeline/mapped/mech_effect/"
     
     data_dir = pathlib.Path(DATA_PATH_NOISY)
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -560,9 +560,9 @@ def write_gold_file(mech_flag, root_path, annotated_path):
     random.shuffle(other_keys)
     other_madeline = [doc_key for doc_key in madeline_keys if doc_key not in unique_to_madeline[0:40]]
     if mech_flag == True:
-        output_file_path = root_path + "/gold/mech/"
+        output_file_path = root_path + "/gold_madeline/mech/"
     else:
-        output_file_path = root_path + "/gold/mech_effect/"
+        output_file_path = root_path + "/gold_madeline/mech_effect/"
         
     data_dir = pathlib.Path(output_file_path)
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -588,7 +588,6 @@ def write_gold_file(mech_flag, root_path, annotated_path):
                     if mech_flag == True:
                         output_file.write(data["doc_key"] + '\t' + key[1] + '\t' + element[2] + '\t' + element[3] + '\t' + 'MECHANISM\t' + element[5] + '\n')
                     else:
-                        print("effect")
                         output_file.write(data["doc_key"] + '\t' + key[1] + '\t' + element[2] + '\t' + element[3] + '\t' + 'EFFECT\t' + element[5] + '\n')
 
  
