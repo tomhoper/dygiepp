@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--config',
                         type=str,
-                        default="./training_config/scierc.jsonnet",
+                        default="./training_config/scierc_lightweight.jsonnet",
                         help='training config',
                         required=False)
  
