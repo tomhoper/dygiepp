@@ -12,10 +12,13 @@ class RelationMetrics(Metric):
     def __init__(self):
         self.reset()
 
+    # TODO(dwadden) This requires decoding because the dataset reader gets rid of gold spans wider
+    # than the span width. So, I can't just compare the tensor of gold labels to the tensor of
+    # predicted labels.
     @overrides
     def __call__(self, predicted_relation_list, metadata_list):
         for predicted_relations, metadata in zip(predicted_relation_list, metadata_list):
-            gold_relations = metadata["relation_dict"]
+            gold_relations = metadata.relation_dict
             self._total_gold += len(gold_relations)
             self._total_predicted += len(predicted_relations)
             for (span_1, span_2), label in predicted_relations.items():
@@ -37,33 +40,4 @@ class RelationMetrics(Metric):
     def reset(self):
         self._total_gold = 0
         self._total_predicted = 0
-        self._total_matched = 0
-
-
-class CandidateRecall(Metric):
-    """
-    Computes relation candidate recall.
-    """
-    def __init__(self):
-        self.reset()
-
-    def __call__(self, predicted_relation_list, metadata_list):
-        for predicted_relations, metadata in zip(predicted_relation_list, metadata_list):
-            gold_spans = set(metadata["relation_dict"].keys())
-            candidate_spans = set(predicted_relations.keys())
-            self._total_gold += len(gold_spans)
-            self._total_matched += len(gold_spans & candidate_spans)
-
-    @overrides
-    def get_metric(self, reset=False):
-        recall = self._total_matched / self._total_gold if self._total_gold > 0 else 0
-
-        if reset:
-            self.reset()
-
-        return recall
-
-    @overrides
-    def reset(self):
-        self._total_gold = 0
         self._total_matched = 0

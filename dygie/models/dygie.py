@@ -1,6 +1,5 @@
-from os import path
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import copy
 
 import torch
@@ -10,8 +9,8 @@ from overrides import overrides
 from allennlp.data import Vocabulary
 from allennlp.common.params import Params
 from allennlp.models.model import Model
-from allennlp.modules import Seq2SeqEncoder, TextFieldEmbedder, FeedForward
-from allennlp.modules.span_extractors import SelfAttentiveSpanExtractor, EndpointSpanExtractor
+from allennlp.modules import TextFieldEmbedder, FeedForward, TimeDistributed
+from allennlp.modules.span_extractors import EndpointSpanExtractor
 from allennlp.nn import util, InitializerApplicator, RegularizerApplicator
 
 # Import submodules.
@@ -19,7 +18,7 @@ from dygie.models.coref import CorefResolver
 from dygie.models.ner import NERTagger
 from dygie.models.relation import RelationExtractor
 from dygie.models.events import EventExtractor
-from dygie.training.joint_metrics import JointMetrics
+from dygie.data.dataset_readers import document
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
@@ -42,203 +41,181 @@ class DyGIE(Model):
         A nested dictionary specifying parameters to be passed on to initialize submodules.
     max_span_width: ``int``
         The maximum width of candidate spans.
-    lexical_dropout: ``int``
-        The probability of dropping out dimensions of the embedded text.
+    target_task: ``str``:
+        The task used to make early stopping decisions.
     initializer : ``InitializerApplicator``, optional (default=``InitializerApplicator()``)
         Used to initialize the model parameters.
+    module_initializer : ``InitializerApplicator``, optional (default=``InitializerApplicator()``)
+        Used to initialize the individual modules.
     regularizer : ``RegularizerApplicator``, optional (default=``None``)
         If provided, will be used to calculate the regularization penalty during training.
     display_metrics: ``List[str]``. A list of the metrics that should be printed out during model
         training.
     """
+
     def __init__(self,
                  vocab: Vocabulary,
-                 text_field_embedder: TextFieldEmbedder,
-                 context_layer: Seq2SeqEncoder,
+                 embedder: TextFieldEmbedder,
                  modules,  # TODO(dwadden) Add type.
                  feature_size: int,
                  max_span_width: int,
-                 loss_weights: Dict[str, int],
-                 lexical_dropout: float = 0.2,
-                 lstm_dropout: float = 0.4,
-                 use_attentive_span_extractor: bool = False,
-                 co_train: bool = False,
+                 target_task: str,
+                 feedforward_params: Dict[str, Union[int, float]],
+                 loss_weights: Dict[str, float],
                  initializer: InitializerApplicator = InitializerApplicator(),
+                 module_initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None,
                  display_metrics: List[str] = None) -> None:
         super(DyGIE, self).__init__(vocab, regularizer)
 
-        self._text_field_embedder = text_field_embedder
-        self._context_layer = context_layer
+        ####################
 
+        # Create span extractor.
+        self._endpoint_span_extractor = EndpointSpanExtractor(
+            embedder.get_output_dim(),
+            combination="x,y",
+            num_width_embeddings=max_span_width,
+            span_width_embedding_dim=feature_size,
+            bucket_widths=False)
+
+        ####################
+
+        # Set parameters.
+        self._embedder = embedder
         self._loss_weights = loss_weights
-        self._permanent_loss_weights = copy.deepcopy(self._loss_weights)
+        self._max_span_width = max_span_width
+        self._display_metrics = self._get_display_metrics(target_task)
+        token_emb_dim = self._embedder.get_output_dim()
+        span_emb_dim = self._endpoint_span_extractor.get_output_dim()
 
-        # Need to add this line so things don't break. TODO(dwadden) sort out what's happening.
+        ####################
+
+        # Create submodules.
+
         modules = Params(modules)
-        self._coref = CorefResolver.from_params(vocab=vocab,
-                                                feature_size=feature_size,
-                                                params=modules.pop("coref"))
+
+        # Helper function to create feedforward networks.
+        def make_feedforward(input_dim):
+            return FeedForward(input_dim=input_dim,
+                               num_layers=feedforward_params["num_layers"],
+                               hidden_dims=feedforward_params["hidden_dims"],
+                               activations=torch.nn.ReLU(),
+                               dropout=feedforward_params["dropout"])
+
+        # Submodules
+
         self._ner = NERTagger.from_params(vocab=vocab,
+                                          make_feedforward=make_feedforward,
+                                          span_emb_dim=span_emb_dim,
                                           feature_size=feature_size,
                                           params=modules.pop("ner"))
+
+        self._coref = CorefResolver.from_params(vocab=vocab,
+                                                make_feedforward=make_feedforward,
+                                                span_emb_dim=span_emb_dim,
+                                                feature_size=feature_size,
+                                                params=modules.pop("coref"))
+
         self._relation = RelationExtractor.from_params(vocab=vocab,
+                                                       make_feedforward=make_feedforward,
+                                                       span_emb_dim=span_emb_dim,
                                                        feature_size=feature_size,
                                                        params=modules.pop("relation"))
+
         self._events = EventExtractor.from_params(vocab=vocab,
+                                                  make_feedforward=make_feedforward,
+                                                  token_emb_dim=token_emb_dim,
+                                                  span_emb_dim=span_emb_dim,
                                                   feature_size=feature_size,
                                                   params=modules.pop("events"))
 
-        # Make endpoint span extractor.
+        ####################
 
-        self._endpoint_span_extractor = EndpointSpanExtractor(context_layer.get_output_dim(),
-                                                              combination="x,y",
-                                                              num_width_embeddings=max_span_width,
-                                                              span_width_embedding_dim=feature_size,
-                                                              bucket_widths=False)
-        if use_attentive_span_extractor:
-            self._attentive_span_extractor = SelfAttentiveSpanExtractor(
-                input_dim=text_field_embedder.get_output_dim())
-        else:
-            self._attentive_span_extractor = None
-
-        self._max_span_width = max_span_width
-
-        self._display_metrics = display_metrics
-
-        if lexical_dropout > 0:
-            self._lexical_dropout = torch.nn.Dropout(p=lexical_dropout)
-        else:
-            self._lexical_dropout = lambda x: x
-
-        # Do co-training if we're training on ACE and ontonotes.
-        self._co_train = co_train
-
-        # Big gotcha: PyTorch doesn't add dropout to the LSTM's output layer. We need to do this
-        # manually.
-        if lstm_dropout > 0:
-            self._lstm_dropout = torch.nn.Dropout(p=lstm_dropout)
-        else:
-            self._lstm_dropout = lambda x: x
+        # Initialize text embedder and all submodules
+        for module in [self._ner, self._coref, self._relation, self._events]:
+            module_initializer(module)
 
         initializer(self)
+
+    @staticmethod
+    def _get_display_metrics(target_task):
+        """
+        The `target` is the name of the task used to make early stopping decisions. Show metrics
+        related to this task.
+        """
+        lookup = {
+            "ner": [f"MEAN__{name}" for name in
+                    ["ner_precision", "ner_recall", "ner_f1"]],
+            "relation": [f"MEAN__{name}" for name in
+                    ["relation_precision", "relation_recall", "relation_f1"]],
+            "coref": [f"MEAN__{name}" for name in
+                      ["coref_precision", "coref_recall", "coref_f1", "coref_mention_recall"]],
+            # TODO(dwadden) Need to fix this to get different metrics for different datasets.
+            "events": ["trig_class_f1", "arg_class_f1"]}
+        if target_task not in lookup:
+            raise ValueError(f"Invalied value {target_task} has been given as the target task.")
+        return lookup[target_task]
+
+    @staticmethod
+    def _debatch(x):
+        # TODO(dwadden) Get rid of this when I find a better way to do it.
+        return x if x is None else x.squeeze(0)
 
     @overrides
     def forward(self,
                 text,
                 spans,
-                ner_labels,
-                coref_labels,
-                relation_labels,
-                trigger_labels,
-                argument_labels,
-                metadata):
+                metadata,
+                ner_labels=None,
+                coref_labels=None,
+                relation_labels=None,
+                trigger_labels=None,
+                argument_labels=None):
         """
         TODO(dwadden) change this.
         """
-        # For co-training on Ontonotes, need to change the loss weights depending on the data coming
-        # in. This is a hack but it will do for now.
-        if self._co_train:
-            if self.training:
-                dataset = [entry["dataset"] for entry in metadata]
-                assert len(set(dataset)) == 1
-                dataset = dataset[0]
-                assert dataset in ["ace", "ontonotes"]
-                if dataset == "ontonotes":
-                    self._loss_weights = dict(coref=1, ner=0, relation=0, events=0)
-                else:
-                    self._loss_weights = self._permanent_loss_weights
-            # This assumes that there won't be any co-training data in the dev and test sets, and that
-            # coref propagation will still happen even when the coref weight is set to 0.
-            else:
-                self._loss_weights = self._permanent_loss_weights
-
         # In AllenNLP, AdjacencyFields are passed in as floats. This fixes it.
-        relation_labels = relation_labels.long()
-        argument_labels = argument_labels.long()
+        if relation_labels is not None:
+            relation_labels = relation_labels.long()
+        if argument_labels is not None:
+            argument_labels = argument_labels.long()
 
-        # If we're doing Bert, get the sentence class token as part of the text embedding. This will
-        # break if we use Bert together with other embeddings, but that won't happen much.
-        if "bert-offsets" in text:
-            # NOTE(dwadden) This operation mutates the text. We clone it so that the input isn't
-            # mutated; otherwise, successive `forward` calls on the same data variable would give
-            # different results because the data got mutated silently.
-            new_text = {}
-            for k, v in text.items():
-                new_text[k] = v.clone()
-            text = new_text
-            offsets = text["bert-offsets"]
-            sent_ix = torch.zeros(offsets.size(0), device=offsets.device, dtype=torch.long).unsqueeze(1)
-            padded_offsets = torch.cat([sent_ix, offsets], dim=1)
-            text["bert-offsets"] = padded_offsets
-            padded_embeddings = self._text_field_embedder(text)
-            cls_embeddings = padded_embeddings[:, 0, :]
-            text_embeddings = padded_embeddings[:, 1:, :]
-        else:
-            text_embeddings = self._text_field_embedder(text)
-            cls_embeddings = torch.zeros([text_embeddings.size(0), text_embeddings.size(2)],
-                                         device=text_embeddings.device)
+        # TODO(dwadden) Multi-document minibatching isn't supported yet. For now, get rid of the
+        # extra dimension in the input tensors. Will return to this once the model runs.
+        if len(metadata) > 1:
+            raise NotImplementedError("Multi-document minibatching not yet supported.")
 
-        text_embeddings = self._lexical_dropout(text_embeddings)
+        metadata = metadata[0]
+        spans = self._debatch(spans)  # (n_sents, max_n_spans, 2)
+        ner_labels = self._debatch(ner_labels)  # (n_sents, max_n_spans)
+        coref_labels = self._debatch(coref_labels)  #  (n_sents, max_n_spans)
+        relation_labels = self._debatch(relation_labels)  # (n_sents, max_n_spans, max_n_spans)
+        trigger_labels = self._debatch(trigger_labels)  # TODO(dwadden)
+        argument_labels = self._debatch(argument_labels)  # TODO(dwadden)
 
-        # Shape: (batch_size, max_sentence_length)
-        text_mask = util.get_text_field_mask(text).float()
-        sentence_group_lengths = text_mask.sum(dim=1).long()
+        # Encode using BERT, then debatch.
+        # Since the data are batched, we use `num_wrapping_dims=1` to unwrap the document dimension.
+        # (1, n_sents, max_sententence_length, embedding_dim)
 
-        sentence_lengths = 0*text_mask.sum(dim=1).long()
-        for i in range(len(metadata)):
-            sentence_lengths[i] = metadata[i]["end_ix"] - metadata[i]["start_ix"]
-            for k in range(sentence_lengths[i], sentence_group_lengths[i]):
-                text_mask[i][k] = 0
+        # TODO(dwadden) Deal with the case where the input is longer than 512.
+        text_embeddings = self._embedder(text, num_wrapping_dims=1)
+        # (n_sents, max_n_wordpieces, embedding_dim)
+        text_embeddings = self._debatch(text_embeddings)
 
-        max_sentence_length = sentence_lengths.max().item()
+        # (n_sents, max_sentence_length)
+        text_mask = self._debatch(util.get_text_field_mask(text, num_wrapping_dims=1).float())
+        sentence_lengths = text_mask.sum(dim=1).long()  # (n_sents)
 
-        # TODO(Ulme) Speed this up by tensorizing
-        new_text_embeddings = torch.zeros([text_embeddings.shape[0], max_sentence_length, text_embeddings.shape[2]], device=text_embeddings.device)
-        for i in range(len(new_text_embeddings)):
-            new_text_embeddings[i][0:metadata[i]["end_ix"] - metadata[i]["start_ix"]] = text_embeddings[i][metadata[i]["start_ix"]:metadata[i]["end_ix"]]
-
-        #max_sent_len = max(sentence_lengths)
-        #the_list = [list(k+metadata[i]["start_ix"] if k < max_sent_len else 0 for k in range(text_embeddings.shape[1])) for i in range(len(metadata))]
-        #import ipdb; ipdb.set_trace()
-        #text_embeddings = torch.gather(text_embeddings, 1, torch.tensor(the_list, device=text_embeddings.device).unsqueeze(2).repeat(1, 1, text_embeddings.shape[2]))
-        text_embeddings = new_text_embeddings
-
-        # Only keep the text embeddings that correspond to actual tokens.
-        # text_embeddings = text_embeddings[:, :max_sentence_length, :].contiguous()
-        text_mask = text_mask[:, :max_sentence_length].contiguous()
-
-        # Shape: (batch_size, max_sentence_length, encoding_dim)
-        contextualized_embeddings = self._lstm_dropout(self._context_layer(text_embeddings, text_mask))
-        assert spans.max() < contextualized_embeddings.shape[1]
-
-        if self._attentive_span_extractor is not None:
-            # Shape: (batch_size, num_spans, emebedding_size)
-            attended_span_embeddings = self._attentive_span_extractor(text_embeddings, spans)
-
-        # Shape: (batch_size, num_spans)
-        span_mask = (spans[:, :, 0] >= 0).float()
-        # SpanFields return -1 when they are used as padding. As we do
-        # some comparisons based on span widths when we attend over the
-        # span representations that we generate from these indices, we
-        # need them to be <= 0. This is only relevant in edge cases where
-        # the number of spans we consider after the pruning stage is >= the
-        # total number of spans, because in this case, it is possible we might
-        # consider a masked span.
-        # Shape: (batch_size, num_spans, 2)
-        spans = F.relu(spans.float()).long()
+        span_mask = (spans[:, :, 0] >= 0).float()  # (n_sents, max_n_spans)
+        # SpanFields return -1 when they are used as padding. As we do some comparisons based on
+        # span widths when we attend over the span representations that we generate from these
+        # indices, we need them to be <= 0. This is only relevant in edge cases where the number of
+        # spans we consider after the pruning stage is >= the total number of spans, because in this
+        # case, it is possible we might consider a masked span.
+        spans = F.relu(spans.float()).long()  # (n_sents, max_n_spans, 2)
 
         # Shape: (batch_size, num_spans, 2 * encoding_dim + feature_size)
-        endpoint_span_embeddings = self._endpoint_span_extractor(contextualized_embeddings, spans)
-
-        if self._attentive_span_extractor is not None:
-            # Shape: (batch_size, num_spans, emebedding_size + 2 * encoding_dim + feature_size)
-            span_embeddings = torch.cat([endpoint_span_embeddings, attended_span_embeddings], -1)
-        else:
-            span_embeddings = endpoint_span_embeddings
-
-        # TODO(Ulme) try normalizing span embeddeings
-        #span_embeddings = span_embeddings.abs().sum(dim=-1).unsqueeze(-1)
+        span_embeddings = self._endpoint_span_extractor(text_embeddings, spans)
 
         # Make calls out to the modules to get results.
         output_coref = {'loss': 0}
@@ -251,22 +228,11 @@ class DyGIE(Model):
             output_coref, coref_indices = self._coref.compute_representations(
                 spans, span_mask, span_embeddings, sentence_lengths, coref_labels, metadata)
 
-        # Prune and compute span representations for relation module
-        if self._loss_weights["relation"] > 0 or self._relation.rel_prop > 0:
-            output_relation = self._relation.compute_representations(
-                spans, span_mask, span_embeddings, sentence_lengths, relation_labels, metadata)
-
         # Propagation of global information to enhance the span embeddings
         if self._coref.coref_prop > 0:
-            # TODO(Ulme) Implement Coref Propagation
             output_coref = self._coref.coref_propagation(output_coref)
-            span_embeddings = self._coref.update_spans(output_coref, span_embeddings, coref_indices)
-
-        if self._relation.rel_prop > 0:
-            output_relation = self._relation.relation_propagation(output_relation)
-            span_embeddings = self.update_span_embeddings(span_embeddings, span_mask,
-                output_relation["top_span_embeddings"], output_relation["top_span_mask"],
-                output_relation["top_span_indices"])
+            span_embeddings = self._coref.update_spans(
+                output_coref, span_embeddings, coref_indices)
 
         # Make predictions and compute losses for each module
         if self._loss_weights['ner'] > 0:
@@ -277,36 +243,22 @@ class DyGIE(Model):
             output_coref = self._coref.predict_labels(output_coref, metadata)
 
         if self._loss_weights['relation'] > 0:
-            output_relation = self._relation.predict_labels(relation_labels, output_relation, metadata)
+            output_relation = self._relation(
+                spans, span_mask, span_embeddings, sentence_lengths, relation_labels, metadata)
 
         if self._loss_weights['events'] > 0:
-            # Make the trigger embeddings the same size as the argument embeddings to make
-            # propagation easier.
-            if self._events._span_prop._n_span_prop > 0:
-                trigger_embeddings = contextualized_embeddings.repeat(1, 1, 2)
-                trigger_widths = torch.zeros([trigger_embeddings.size(0), trigger_embeddings.size(1)],
-                                             device=trigger_embeddings.device, dtype=torch.long)
-                trigger_width_embs = self._endpoint_span_extractor._span_width_embedding(trigger_widths)
-                trigger_width_embs = trigger_width_embs.detach()
-                trigger_embeddings = torch.cat([trigger_embeddings, trigger_width_embs], dim=-1)
-            else:
-                trigger_embeddings = contextualized_embeddings
-
+            # The `text_embeddings` serve as representations for event triggers.
             output_events = self._events(
-                text_mask, trigger_embeddings, spans, span_mask, span_embeddings, cls_embeddings,
-                sentence_lengths, output_ner, trigger_labels, argument_labels,
+                text_mask, text_embeddings, spans, span_mask, span_embeddings,
+                sentence_lengths, trigger_labels, argument_labels,
                 ner_labels, metadata)
 
-        if "loss" not in output_coref:
-            output_coref["loss"] = 0
-        if "loss" not in output_relation:
-            output_relation["loss"] = 0
-
-        # TODO(dwadden) just did this part.
-        loss = (self._loss_weights['coref'] * output_coref['loss'] +
-                self._loss_weights['ner'] * output_ner['loss'] +
-                self._loss_weights['relation'] * output_relation['loss'] +
-                self._loss_weights['events'] * output_events['loss'])
+        # Use `get` since there are some cases where the output dict won't have a loss - for
+        # instance, when doing prediction.
+        loss = (self._loss_weights['coref'] * output_coref.get("loss", 0) +
+                self._loss_weights['ner'] * output_ner.get("loss", 0) +
+                self._loss_weights['relation'] * output_relation.get("loss", 0) +
+                self._loss_weights['events'] * output_events.get("loss", 0))
 
         output_dict = dict(coref=output_coref,
                            relation=output_relation,
@@ -314,16 +266,12 @@ class DyGIE(Model):
                            events=output_events)
         output_dict['loss'] = loss
 
-        # Check to see if event predictions are globally compatible (argument labels are compatible
-        # with NER tags and trigger tags).
-        # if self._loss_weights["ner"] > 0 and self._loss_weights["events"] > 0:
-        #     decoded_ner = self._ner.decode(output_dict["ner"])
-        #     decoded_events = self._events.decode(output_dict["events"])
-        #     self._joint_metrics(decoded_ner, decoded_events)
+        output_dict["metadata"] = metadata
 
         return output_dict
 
-    def update_span_embeddings(self, span_embeddings, span_mask, top_span_embeddings, top_span_mask, top_span_indices):
+    def update_span_embeddings(self, span_embeddings, span_mask, top_span_embeddings,
+                               top_span_mask, top_span_indices):
         # TODO(Ulme) Speed this up by tensorizing
 
         new_span_embeddings = span_embeddings.clone()
@@ -331,11 +279,12 @@ class DyGIE(Model):
             for top_span_nr, span_nr in enumerate(top_span_indices[sample_nr]):
                 if top_span_mask[sample_nr, top_span_nr] == 0 or span_mask[sample_nr, span_nr] == 0:
                     break
-                new_span_embeddings[sample_nr, span_nr] = top_span_embeddings[sample_nr, top_span_nr]
+                new_span_embeddings[sample_nr,
+                                    span_nr] = top_span_embeddings[sample_nr, top_span_nr]
         return new_span_embeddings
 
     @overrides
-    def decode(self, output_dict: Dict[str, torch.Tensor]):
+    def make_output_human_readable(self, output_dict: Dict[str, torch.Tensor]):
         """
         Converts the list of spans and predicted antecedent indices into clusters
         of spans for each element in the batch.
@@ -354,18 +303,50 @@ class DyGIE(Model):
             which are in turn comprised of a list of (start, end) inclusive spans into the
             original document.
         """
-        # TODO(dwadden) which things are already decoded?
-        res = {}
-        if self._loss_weights["coref"] > 0:
-            res["coref"] = self._coref.decode(output_dict["coref"])
-        if self._loss_weights["ner"] > 0:
-            res["ner"] = self._ner.decode(output_dict["ner"])
-        if self._loss_weights["relation"] > 0:
-            res["relation"] = self._relation.decode(output_dict["relation"])
-        if self._loss_weights["events"] > 0:
-            res["events"] = output_dict["events"]
 
-        return res
+        doc = copy.deepcopy(output_dict["metadata"])
+
+        if self._loss_weights["coref"] > 0:
+            # TODO(dwadden) Will need to get rid of the [0] when batch training is enabled.
+            decoded_coref = self._coref.make_output_human_readable(output_dict["coref"])["predicted_clusters"][0]
+            sentences = doc.sentences
+            sentence_starts = [sent.sentence_start for sent in sentences]
+            predicted_clusters = [document.Cluster(entry, i, sentences, sentence_starts)
+                                  for i, entry in enumerate(decoded_coref)]
+            doc.predicted_clusters = predicted_clusters
+            # TODO(dwadden) update the sentences with cluster information.
+
+        if self._loss_weights["ner"] > 0:
+            for predictions, sentence in zip(output_dict["ner"]["predictions"], doc):
+                sentence.predicted_ner = predictions
+
+        if self._loss_weights["relation"] > 0:
+            for predictions, sentence in zip(output_dict["relation"]["predictions"], doc):
+                sentence.predicted_relations = predictions
+
+        if self._loss_weights["events"] > 0:
+            # TODO(dwadden) Not sure this works.
+            decoded_events = output_dict["events"]["decoded_events"]
+            for decoded_sent, sentence in zip(decoded_events, doc):
+                trigger_dict = decoded_sent["trigger_dict"]
+                argument_dict = decoded_sent["argument_dict"]
+                events_json = []
+                for trigger_ix, trigger_label in trigger_dict.items():
+                    this_event = []
+                    this_event.append([trigger_ix, trigger_label])
+                    event_arguments = {k: v for k, v in argument_dict.items() if k[0] == trigger_ix}
+                    this_event_args = []
+                    for k, v in event_arguments.items():
+                        entry = list(k[1]) + [v]
+                        this_event_args.append(entry)
+                    this_event_args = sorted(this_event_args, key=lambda entry: entry[0])
+                    this_event.extend(this_event_args)
+                    events_json.append(this_event)
+
+                events = document.Events(events_json, sentence, sentence_offsets=True)
+                sentence.predicted_events = events
+
+        return doc
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         """
@@ -376,11 +357,6 @@ class DyGIE(Model):
         metrics_ner = self._ner.get_metrics(reset=reset)
         metrics_relation = self._relation.get_metrics(reset=reset)
         metrics_events = self._events.get_metrics(reset=reset)
-        # if self._loss_weights["ner"] > 0 and self._loss_weights["events"] > 0:
-        #     metrics_joint = self._joint_metrics.get_metric(reset=reset)
-        # else:
-        #     metrics_joint = {}
-        metrics_joint = {}
 
         # Make sure that there aren't any conflicting names.
         metric_names = (list(metrics_coref.keys()) + list(metrics_ner.keys()) +
@@ -389,8 +365,7 @@ class DyGIE(Model):
         all_metrics = dict(list(metrics_coref.items()) +
                            list(metrics_ner.items()) +
                            list(metrics_relation.items()) +
-                           list(metrics_events.items()) +
-                           list(metrics_joint.items()))
+                           list(metrics_events.items()))
 
         # If no list of desired metrics given, display them all.
         if self._display_metrics is None:
