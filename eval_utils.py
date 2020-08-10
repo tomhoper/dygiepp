@@ -408,7 +408,8 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
 
     good_preds = []
     seen_pred_gold = {}
-
+    if topK == None:
+        topK = len(predrels)
     for i in predrels[:topK].index.unique():
         if i in goldrels_trans.index.unique():
             gold = goldrels_trans.loc[[i]]
