@@ -109,17 +109,24 @@ if __name__ == '__main__':
                 if match_metric == 'jaccard':
                     th_opts = [0.3, 0.4, 0.5]
                 for th in th_opts:
-                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th, topK=100)
+                    k_th = [100, 150, 200]
+                    p_at_k = []
+                    for topK in k_th:
+                        _, p, _, _ = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK)
+                        p_at_k.append(p)
+
+
+                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
                     span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
-                    res = [k, precision, recall, F1, mech_effect, collapse, match_metric, th]
+                    res = [k, precision, recall, F1, p_at_k[0],p_at_k[1],p_at_k[2] , mech_effect, collapse, match_metric, th]
                     res_span = [k, span_precision, span_recall, span_F1, match_metric, th]
                     res_list.append(res)
                     res_span_list.append(res_span)
-                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5} span_presicion: {6} span_recall: {7} span_F1: {8}'.format(k, collapse, match_metric, precision,recall, F1, span_precision,span_recall, span_F1))
+                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5} P@{12}: {6} P@{13}: {7} P@{14}: {8} span_presicion: {9} span_recall: {10} span_F1: {11}'.format(k, collapse, match_metric, precision,recall, F1, p_at_k[0],p_at_k[1],p_at_k[2], span_precision,span_recall, span_F1, k_th[0], k_th[1], k_th[2]))
 
         print ("****")
 
-    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","mech_effect_mode","collapse","match_mettric","threshold"])
+    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","mech_effect_mode","collapse","match_mettric","threshold"])
     stats_path = stat_path / 'stats.tsv'
     stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
 
