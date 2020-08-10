@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--device',
                         type=str,
-                        default='1,2,3',
+                        default='1',
                         required=False,
                         help="cuda devices comma seperated")
 
