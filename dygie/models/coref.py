@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable
 
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,8 @@ from allennlp.modules.token_embedders import Embedding
 from allennlp.modules import FeedForward
 from allennlp.modules import TimeDistributed
 from allennlp.nn import util, InitializerApplicator, RegularizerApplicator
-from allennlp.training.metrics import MentionRecall, ConllCorefScores
+from allennlp_models.coref.metrics.conll_coref_scores import ConllCorefScores
+from allennlp_models.coref.metrics.mention_recall import MentionRecall
 
 from dygie.models import shared
 from dygie.models.entity_beam_pruner import Pruner
@@ -41,38 +42,40 @@ class CorefResolver(Model):
         For each mention which survives the pruning stage, we consider this many antecedents.
     lexical_dropout: ``int``
         The probability of dropping out dimensions of the embedded text.
-    initializer : ``InitializerApplicator``, optional (default=``InitializerApplicator()``)
-        Used to initialize the model parameters.
     regularizer : ``RegularizerApplicator``, optional (default=``None``)
         If provided, will be used to calculate the regularization penalty during training.
     """
     def __init__(self,
                  vocab: Vocabulary,
-                 mention_feedforward: FeedForward,
-                 antecedent_feedforward: FeedForward,
+                 make_feedforward: Callable,
+                 span_emb_dim: int,
                  feature_size: int,
                  spans_per_word: float,
-                 span_emb_dim: int,
                  max_antecedents: int,
                  coref_prop: int = 0,
                  coref_prop_dropout_f: float = 0.0,
-                 initializer: InitializerApplicator = InitializerApplicator(), # TODO(dwadden add this).
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
         super(CorefResolver, self).__init__(vocab, regularizer)
 
+        # 10 possible distance buckets.
+        self._num_distance_buckets = 10
+        self._spans_per_word = spans_per_word
+        self._max_antecedents = max_antecedents
+
+        self._distance_embedding = Embedding(embedding_dim=feature_size,
+                                             num_embeddings=self._num_distance_buckets)
+
+        antecedent_input_dim = 3 * span_emb_dim + feature_size
+        antecedent_feedforward = make_feedforward(input_dim=antecedent_input_dim)
         self._antecedent_feedforward = TimeDistributed(antecedent_feedforward)
+
+        mention_feedforward = make_feedforward(input_dim=span_emb_dim)
         feedforward_scorer = torch.nn.Sequential(
             TimeDistributed(mention_feedforward),
             TimeDistributed(torch.nn.Linear(mention_feedforward.get_output_dim(), 1)))
         self._mention_pruner = Pruner(feedforward_scorer)
-        self._antecedent_scorer = TimeDistributed(torch.nn.Linear(antecedent_feedforward.get_output_dim(), 1))
-
-        # 10 possible distance buckets.
-        self._num_distance_buckets = 10
-        self._distance_embedding = Embedding(self._num_distance_buckets, feature_size)
-
-        self._spans_per_word = spans_per_word
-        self._max_antecedents = max_antecedents
+        self._antecedent_scorer = TimeDistributed(torch.nn.Linear(
+            antecedent_feedforward.get_output_dim(), 1))
 
         self._mention_recall = MentionRecall()
         self._conll_coref_scores = ConllCorefScores()
@@ -84,13 +87,7 @@ class CorefResolver(Model):
                                       activations=torch.nn.Sigmoid(),
                                       dropout=coref_prop_dropout_f)
 
-        #self._f_network2 = FeedForward(input_dim=2*span_emb_dim,
-        #                              num_layers=1,
-        #                              hidden_dims=1,
-        #                              activations=torch.nn.Sigmoid(),
-        #                              dropout=coref_prop_dropout_f)
         self.antecedent_softmax = torch.nn.Softmax(dim=-1)
-        initializer(self)
 
     def update_spans(self, output_dict, span_embeddings_batched, indices):
         new_span_embeddings_batched = span_embeddings_batched.clone()
@@ -104,7 +101,10 @@ class CorefResolver(Model):
             span_ix = output_dict[doc_key]["span_ix"]
             top_span_embeddings = output_dict[doc_key]["top_span_embeddings"]
             for ix, el in enumerate(output_dict[doc_key]["top_span_indices"].view(-1)):
-                new_span_embeddings_batched[span_ix[el] / span_embeddings_batched.shape[1] + offsets[doc_key], span_ix[el] % span_embeddings_batched.shape[1]] = top_span_embeddings[0, ix]
+                # TODO(dwadden) Why is floor division what we want here? Emailed Ulme about this.
+                row_ix = span_ix[el] // span_embeddings_batched.shape[1] + offsets[doc_key]
+                col_ix = span_ix[el] % span_embeddings_batched.shape[1]
+                new_span_embeddings_batched[row_ix, col_ix] = top_span_embeddings[0, ix]
 
         return new_span_embeddings_batched
 
@@ -124,24 +124,30 @@ class CorefResolver(Model):
             assert antecedent_indices.max() <= top_span_embeddings.shape[1]
 
             antecedent_distribution = self.antecedent_softmax(coreference_scores)[:, :, 1:]
-            top_span_emb_repeated = top_span_embeddings.repeat(antecedent_distribution.shape[2],1,1)
-            if antecedent_indices.shape[0]==antecedent_indices.shape[1]:
-                selected_top_span_embs = util.batched_index_select(top_span_emb_repeated, antecedent_indices).unsqueeze(0)
-                entity_embs = (selected_top_span_embs.permute([3,0,1,2]) * antecedent_distribution).permute([1, 2, 3, 0]).sum(dim=2)
+            top_span_emb_repeated = top_span_embeddings.repeat(
+                antecedent_distribution.shape[2], 1, 1)
+            if antecedent_indices.shape[0] == antecedent_indices.shape[1]:
+                selected_top_span_embs = util.batched_index_select(
+                    top_span_emb_repeated, antecedent_indices).unsqueeze(0)
+                entity_embs = (selected_top_span_embs.permute(
+                    [3, 0, 1, 2]) * antecedent_distribution).permute([1, 2, 3, 0]).sum(dim=2)
             else:
-                ant_var1 = antecedent_indices.unsqueeze(0).unsqueeze(-1).repeat(1,1,1,top_span_embeddings.shape[-1])
-                top_var1 = top_span_embeddings.unsqueeze(1).repeat(1,antecedent_distribution.shape[1],1,1)
-                entity_embs = (torch.gather(top_var1, 2, ant_var1).permute([3,0,1,2]) * antecedent_distribution).permute([1, 2, 3, 0]).sum(dim=2)
-
-            #entity_embs = F.dropout(entity_embs)
+                ant_var1 = antecedent_indices.unsqueeze(
+                    0).unsqueeze(-1).repeat(1, 1, 1, top_span_embeddings.shape[-1])
+                top_var1 = top_span_embeddings.unsqueeze(1).repeat(
+                    1, antecedent_distribution.shape[1], 1, 1)
+                entity_embs = (torch.gather(top_var1, 2, ant_var1).permute(
+                    [3, 0, 1, 2]) * antecedent_distribution).permute([1, 2, 3, 0]).sum(dim=2)
 
             f_network_input = torch.cat([top_span_embeddings, entity_embs], dim=-1)
             f_weights = self._f_network(f_network_input)
             top_span_embeddings = f_weights * top_span_embeddings + (1.0 - f_weights) * entity_embs
 
-            #f_weights2 = self._f_network2(f_network_input)
-            #top_span_embeddings = f_weights2 * top_span_embeddings + (1.0 - f_weights2) * entity_embs
-            coreference_scores = self.get_coref_scores(top_span_embeddings, self._mention_pruner._scorer(top_span_embeddings), output_dict["antecedent_indices"], output_dict["valid_antecedent_offsets"], output_dict["valid_antecedent_log_mask"])
+            coreference_scores = self.get_coref_scores(
+                top_span_embeddings,
+                self._mention_pruner._scorer(
+                    top_span_embeddings), output_dict["antecedent_indices"],
+                output_dict["valid_antecedent_offsets"], output_dict["valid_antecedent_log_mask"])
 
         output_dict["coreference_scores"] = coreference_scores
         output_dict["top_span_embeddings"] = top_span_embeddings
@@ -150,19 +156,20 @@ class CorefResolver(Model):
     #@overrides
     #def forward(self,  # type: ignore
     def compute_representations(self,  # type: ignore
-                spans_batched: torch.IntTensor,
-                span_mask_batched,
-                span_embeddings_batched,  # TODO(dwadden) add type.
-                sentence_lengths,
-                coref_labels_batched: torch.IntTensor = None,
-                metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
+                                spans_batched: torch.IntTensor,
+                                span_mask_batched,
+                                span_embeddings_batched,  # TODO(dwadden) add type.
+                                sentence_lengths,
+                                coref_labels_batched: torch.IntTensor = None,
+                                metadata=None) -> Dict[str, torch.Tensor]:
         """
         Run the forward pass. Since we can only have coreferences between spans in the same
         document, we loop over the documents in the batch. This function assumes that the inputs are
         in order, but may go across documents.
         """
         output_docs = {}
-        doc_keys = [entry["doc_key"] for entry in metadata]
+        # TODO(dwadden) Update this when I implement multiple documents per minibatch.
+        doc_keys = [metadata.doc_key] * len(metadata)
         uniq_keys = []
         for entry in doc_keys:
             if entry not in uniq_keys:
@@ -172,7 +179,7 @@ class CorefResolver(Model):
         for key in uniq_keys:
             ix_list = [1 if entry == key else 0 for entry in doc_keys]
             indices[key] = ix_list
-            doc_metadata = [entry for entry in metadata if entry["doc_key"] == key]
+            doc_metadata = metadata
             ix = torch.tensor(ix_list, dtype=torch.bool)
             if sentence_lengths[ix].sum().item() > 1:
                 output_docs[key] = self._compute_representations_doc(
@@ -203,14 +210,15 @@ class CorefResolver(Model):
             output["loss"] = loss
         return output
 
-    def _compute_representations_doc(self,  # type: ignore
-                     spans_batched: torch.IntTensor,
-                     span_mask_batched,
-                     span_embeddings_batched,  # TODO(dwadden) add type.
-                     sentence_lengths,
-                     ix,
-                     coref_labels_batched: torch.IntTensor = None,
-                     metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
+    def _compute_representations_doc(
+            self,  # type: ignore
+            spans_batched: torch.IntTensor,
+            span_mask_batched,
+            span_embeddings_batched,  # TODO(dwadden) add type.
+            sentence_lengths,
+            ix,
+            coref_labels_batched: torch.IntTensor = None,
+            metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
         # pylint: disable=arguments-differ
         """
         Run the forward pass for a single document.
@@ -221,7 +229,7 @@ class CorefResolver(Model):
         # TODO(dwadden) How to handle case where only one span from a cluster makes it into the
         # minibatch? Should I get rid of the cluster?
         # TODO(dwadden) Write quick unit tests for correctness, time permitting.
-        span_ix = span_mask_batched.view(-1).nonzero().squeeze()  # Indices of the spans to keep.
+        span_ix = span_mask_batched.view(-1).nonzero(as_tuple=False).squeeze()  # Indices of the spans to keep.
         spans, span_embeddings = self._flatten_spans(
             spans_batched, span_ix, span_embeddings_batched, sentence_lengths)
         coref_labels = self._flatten_coref_labels(coref_labels_batched, span_ix)
@@ -258,8 +266,9 @@ class CorefResolver(Model):
         valid_antecedent_indices, valid_antecedent_offsets, valid_antecedent_log_mask = \
             self._generate_valid_antecedents(num_spans_to_keep, max_antecedents, util.get_device_of(span_embeddings))
 
-        coreference_scores = self.get_coref_scores(top_span_embeddings, top_span_mention_scores,
-            valid_antecedent_indices, valid_antecedent_offsets, valid_antecedent_log_mask)
+        coreference_scores = self.get_coref_scores(
+            top_span_embeddings, top_span_mention_scores, valid_antecedent_indices,
+            valid_antecedent_offsets, valid_antecedent_log_mask)
 
         output_dict = {"top_spans": top_spans,
                        "antecedent_indices": valid_antecedent_indices,
@@ -276,8 +285,6 @@ class CorefResolver(Model):
                        "metadata": metadata}
 
         return output_dict
-
-    # TODO(Ulme) Split up method here?
 
     def get_coref_scores(self,
                          top_span_embeddings,
@@ -348,17 +355,17 @@ class CorefResolver(Model):
             evaluation_metadata = self._make_evaluation_metadata(metadata, sentence_lengths)
 
             self._mention_recall(top_spans, evaluation_metadata)
+
+            # TODO(dwadden) Shouldnt need to do the unsqueeze here; figure out what's happening.
             self._conll_coref_scores(
-                top_spans, valid_antecedent_indices, predicted_antecedents, evaluation_metadata)
+                top_spans, valid_antecedent_indices.unsqueeze(0), predicted_antecedents, evaluation_metadata)
 
             output_dict["loss"] = negative_marginal_log_likelihood
 
-        if metadata is not None:
-            output_dict["document"] = [x["sentence"] for x in metadata]
         return output_dict
 
     @overrides
-    def decode(self, output_dict: Dict[str, torch.Tensor]):
+    def make_output_human_readable(self, output_dict: Dict[str, torch.Tensor]):
         """
         Converts the list of spans and predicted antecedent indices into clusters
         of spans for each element in the batch.
@@ -428,7 +435,7 @@ class CorefResolver(Model):
                 spans_to_cluster_ids[(span_start, span_end)] = predicted_cluster_id
             batch_clusters.append(clusters)
 
-        output_dict["clusters"] = batch_clusters
+        output_dict["predicted_clusters"] = batch_clusters
         return output_dict
 
     @overrides
@@ -683,7 +690,7 @@ class CorefResolver(Model):
         cluster_dict = {}
         sentence_offset = shared.cumsum_shifted(sentence_lengths).tolist()
         for entry, sentence_start in zip(metadata, sentence_offset):
-            for span, cluster_id in entry["cluster_dict"].items():
+            for span, cluster_id in entry.cluster_dict.items():
                 span_offset = (span[0] + sentence_start, span[1] + sentence_start)
                 if cluster_id in cluster_dict:
                     cluster_dict[cluster_id].append(span_offset)

@@ -22,13 +22,12 @@ local params = {
   use_glove: false,
   use_char: false,
   use_elmo: false,
-  use_attentive_span_extractor: false,
   use_bert_base: false,
   use_bert_large: false,
   use_scibert: true,
   finetune_bert: true,
   rel_prop: 0,
-  coref_prop: 1,
+  coref_prop: 0,
   context_width: 1,
   rel_prop_dropout_A: 0.0,
   rel_prop_dropout_f: 0.0,
@@ -51,8 +50,8 @@ local params = {
     events: 0.0
   },
   loss_weights_events: {   // Loss weights for trigger and argument ID in events.
-    trigger: 0.0,
-    arguments: 0.0,
+    trigger: 1.0,
+    arguments: 1.0,
   },
 
   // Coref settings.
@@ -70,30 +69,19 @@ local params = {
 
   // Model training
   batch_size: 8,
-  instances_per_epoch: 1000,
   num_epochs: 250,
-  patience: 15,
+  patience: 5,
   optimizer: {
-    type: "bert_adam",
+    type: "adamw",
     lr: 1e-3,
-    warmup: 0.1,
-    t_total: 10000,
     weight_decay: 0.0,
     parameter_groups: [
       [["_text_field_embedder"],
        {"lr": 5e-5,
-        "warmup": 0.2,
-        "t_total": 10000,
         "weight_decay": 0.01,
         "finetune": true},],
     ],
   },
-  learning_rate_scheduler:  {
-    type: "reduce_on_plateau",
-    factor: 0.5,
-    mode: "max",
-    patience: 4
-  }
 };
 
 ////////////////////

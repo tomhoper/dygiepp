@@ -29,15 +29,17 @@ function(p) {
   local bert_large_dim = 1024,
   local scibert_dim = 768,
 
-  local module_initializer = [
-    [".*weight", {"type": "xavier_normal"}],
-    [".*weight_matrix", {"type": "xavier_normal"}]],
+   local module_initializer = {"regexes":
+    [[".*weight", {"type": "xavier_normal"}],
+    [".*weight_matrix", {"type": "xavier_normal"}]]
+  },
 
-  local dygie_initializer = [
-    ["_span_width_embedding.weight", {"type": "xavier_normal"}],
+  local dygie_initializer = {"regexes":
+    [["_span_width_embedding.weight", {"type": "xavier_normal"}],
     ["_context_layer._module.weight_ih.*", {"type": "xavier_normal"}],
-    ["_context_layer._module.weight_hh.*", {"type": "orthogonal"}]
-  ],
+    ["_context_layer._module.weight_hh.*", {"type": "orthogonal"}]]
+  },
+
 
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +62,6 @@ function(p) {
   // If predicting labels, can either do "hard" prediction or "softmax". Default is hard.
   local event_args_label_predictor = getattr(p, "event_args_label_predictor", "hard"),
   local events_context_window = getattr(p, "events_context_window", 0),
-  local shared_attention_context = getattr(p, "shared_attention_context", false),
   local trigger_attention_context = getattr(p, "trigger_attention_context", false),
 
   local token_embedding_dim = ((if p.use_glove then glove_dim else 0) +
@@ -74,8 +75,7 @@ function(p) {
     then token_embedding_dim
     else 2 * p.lstm_hidden_size),
   local endpoint_span_emb_dim = 2 * context_layer_output_size + p.feature_size,
-  local attended_span_emb_dim = if p.use_attentive_span_extractor then token_embedding_dim else 0,
-  local span_emb_dim = endpoint_span_emb_dim + attended_span_emb_dim,
+  local span_emb_dim = endpoint_span_emb_dim,
   local pair_emb_dim = 3 * span_emb_dim,
   local relation_scorer_dim = pair_emb_dim,
   local coref_scorer_dim = pair_emb_dim + p.feature_size,
@@ -105,12 +105,7 @@ function(p) {
     (if event_args_use_trigger_labels then trigger_label_dim else 0) +
     (if events_context_window > 0 then 4 * events_context_window * context_layer_output_size else 0)),
   // Add token embedding dim because of the cls token.
-  local argument_scorer_dim = (argument_pair_dim +
-    (if shared_attention_context then trigger_emb_dim else 0) +
-    class_projection_dim),
-
-  // Co-training
-  local co_train = if "co_train" in p then p.co_train else false,
+  local argument_scorer_dim = (argument_pair_dim + class_projection_dim),
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,10 +118,9 @@ function(p) {
     activations: "relu",
     dropout: p.feedforward_dropout
   },
-
   // Model components
 
-  local token_indexers = {
+ local token_indexers = {
     [if p.use_glove then "tokens"]: {
       type: "single_id",
       lowercase_tokens: false
@@ -139,21 +133,15 @@ function(p) {
       type: "elmo_characters"
     },
     [if use_bert then "bert"]: {
-      type: "bert-pretrained",
-      pretrained_model: (if p.use_bert_base then "bert-base-cased"
+      type: "pretrained_transformer_mismatched",
+      model_name: (if p.use_bert_base then "bert-base-cased"
                          else if p.use_bert_large then "bert-large-cased"
-                         else "/home/aida/covid_clean/dygiepp/pretrained/scibert_scivocab_cased/vocab.txt"),
-      do_lowercase: false,
-      use_starting_offsets: true
+                         else "allenai/scibert_scivocab_cased")
     }
   },
 
-  local text_field_embedder = {
-    [if use_bert then "allow_unmatched_keys"]: true,
-    [if use_bert then "embedder_to_indexer_map"]: {
-      bert: ["bert", "bert-offsets"],
-      token_characters: ["token_characters"]
-    },
+
+ local text_field_embedder = {
     token_embedders: {
       [if p.use_glove then "tokens"]: {
         type: "embedding",
@@ -182,11 +170,11 @@ function(p) {
         dropout: 0.5
       },
       [if use_bert then "bert"]: {
-        type: "bert-pretrained",
-        pretrained_model: (if p.use_bert_base then "bert-base-cased"
+        type: "pretrained_transformer_mismatched",
+        model_name: (if p.use_bert_base then "bert-base-cased"
                            else if p.use_bert_large then "bert-large-cased"
-                           else "/home/aida/covid_clean/dygiepp/pretrained/scibert_scivocab_cased/weights.tar.gz"),
-        requires_grad: p.finetune_bert
+                           else "allenai/scibert_scivocab_cased")
+
       }
     }
   },
@@ -211,26 +199,6 @@ function(p) {
     }
   ),
 
-  // Not using these.
-  local iterator = if co_train then {
-    type: "ie_multitask",
-    batch_size: p.batch_size,
-    [if "instances_per_epoch" in p then "instances_per_epoch"]: p.instances_per_epoch
-  } else {
-    type: "bucket",
-    sorting_keys: [["text", "num_tokens"]],
-    batch_size : p.batch_size,
-    [if "instances_per_epoch" in p then "instances_per_epoch"]: p.instances_per_epoch
-  },
-
-  local validation_iterator = if co_train then {
-    type: "ie_document"
-  } else {
-    type: "bucket",
-    sorting_keys: [["text", "num_tokens"]],
-    batch_size : p.batch_size
-  },
-
   ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -240,117 +208,73 @@ function(p) {
   numpy_seed: getattr(p, "numpy_seed", 1337),
   pytorch_seed: getattr(p, "pytorch_seed", 133),
   dataset_reader: {
-    type: "ie_json",
+    type: "dygie",
     token_indexers: token_indexers,
     max_span_width: p.max_span_width,
-    context_width: p.context_width,
-    debug: getattr(p, "debug", false),
+    cache_directory: "cache"
   },
   train_data_path: std.extVar("ie_train_data_path"),
   validation_data_path: std.extVar("ie_dev_data_path"),
   test_data_path: std.extVar("ie_test_data_path"),
   // If provided, use pre-defined vocabulary. Else compute on the fly.
   [if "vocab_path" in p then "vocabulary"]: {
-    directory_path: p.vocab_path
+    type: "from_files",
+    directory: p.vocab_path // config changed TODO
   },
   model: {
     type: "dygie",
     text_field_embedder: text_field_embedder,
     initializer: dygie_initializer,
     loss_weights: p.loss_weights,
-    lexical_dropout: p.lexical_dropout,
-    lstm_dropout: (if p.finetune_bert then 0 else p.lstm_dropout),
     feature_size: p.feature_size,
-    use_attentive_span_extractor: p.use_attentive_span_extractor,
     max_span_width: p.max_span_width,
     display_metrics: display_metrics[p.target],
-    context_layer: context_layer,
-    co_train: co_train,
+    feedforward_params: {
+      num_layers: p.feedforward_layers,
+      hidden_dims: p.feedforward_dim,
+      dropout: p.feedforward_dropout
+    },
     modules: {
       coref: {
         spans_per_word: p.coref_spans_per_word,
         max_antecedents: p.coref_max_antecedents,
-        mention_feedforward: make_feedforward(span_emb_dim),
-        antecedent_feedforward: make_feedforward(coref_scorer_dim),
-        span_emb_dim: span_emb_dim,
         coref_prop: p.coref_prop,
         initializer: module_initializer
       },
       ner: {
-        mention_feedforward: make_feedforward(span_emb_dim),
         initializer: module_initializer
       },
       relation: {
         spans_per_word: p.relation_spans_per_word,
-        positive_label_weight: p.relation_positive_label_weight,
-        mention_feedforward: make_feedforward(span_emb_dim),
-        relation_feedforward: make_feedforward(relation_scorer_dim),
-        rel_prop_dropout_A: p.rel_prop_dropout_A,
-        rel_prop_dropout_f: p.rel_prop_dropout_f,
-        rel_prop: p.rel_prop,
-        span_emb_dim: span_emb_dim,
         initializer: module_initializer
       },
       events: {
         trigger_spans_per_word: p.trigger_spans_per_word,
         argument_spans_per_word: p.argument_spans_per_word,
-        positive_label_weight: p.events_positive_label_weight,
-        trigger_feedforward: make_feedforward(trigger_scorer_dim), // Factor of 2 because of self attention.
-        trigger_candidate_feedforward: make_feedforward(trigger_emb_dim),
-        mention_feedforward: make_feedforward(span_emb_dim),
-        argument_feedforward: make_feedforward(argument_scorer_dim),
-        event_args_use_trigger_labels: event_args_use_trigger_labels,
-        event_args_use_ner_labels: event_args_use_ner_labels,
-        event_args_label_predictor: event_args_label_predictor,
-        event_args_label_emb: event_args_label_emb,
-        label_embedding_method: label_embedding_method,
-        event_args_gold_candidates: getattr(p, "event_args_gold_candidates", false),
         initializer: module_initializer,
         loss_weights: p.loss_weights_events,
-        entity_beam: getattr(p, "events_entity_beam", false),
-        context_window: events_context_window,
-        shared_attention_context: shared_attention_context,
-        span_prop: {
-          emb_dim: span_emb_dim,
-          n_span_prop: event_n_span_prop
-        },
-        softmax_correction: getattr(p, "softmax_correction", false),
-        cls_projection: {
-          input_dim: token_embedding_dim,
-          num_layers: 1,
-          hidden_dims: class_projection_dim,
-          activations: "relu",
-          dropout: p.feedforward_dropout
-        },
-        context_attention: {
-          matrix_1_dim: argument_pair_dim,
-          matrix_2_dim: trigger_emb_dim,
-        },
-        trigger_attention_context: trigger_attention_context,
-        trigger_attention: {
-          type: "pass_through",
-          input_dim: trigger_emb_dim,
-      },
       }
     }
   },
-  iterator: {
-    type: if co_train then "ie_multitask" else "ie_batch",
+  data_loader: {
+    type: "ie_batch",
     batch_size: p.batch_size,
     [if "instances_per_epoch" in p then "instances_per_epoch"]: p.instances_per_epoch
   },
-  validation_iterator: {
-    type: "ie_document",
-    batch_size: p.batch_size
+  validation_data_loader: {
+   type: "ie_batch",
+   batch_size: p.batch_size
   },
+
   trainer: {
-    num_serialized_models_to_keep: 3,
+    checkpointer : {
+        num_serialized_models_to_keep: 3
+    },
     num_epochs: p.num_epochs,
     grad_norm: 5.0,
     patience : p.patience,
-    cuda_device : [x for x in std.split(std.extVar("cuda_device"), ",")],
+    cuda_device : std.parseInt(std.extVar("cuda_device")),
     validation_metric: validation_metrics[p.target],
-    learning_rate_scheduler: p.learning_rate_scheduler,
     optimizer: p.optimizer,
     [if "moving_average_decay" in p then "moving_average"]: {
       type: "exponential",
