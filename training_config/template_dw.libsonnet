@@ -142,7 +142,7 @@ function(p) {
       type: "bert-pretrained",
       pretrained_model: (if p.use_bert_base then "bert-base-cased"
                          else if p.use_bert_large then "bert-large-cased"
-                         else "pretrained/scibert_scivocab_cased/vocab.txt"),
+                         else "/home/aida/covid_clean/dygiepp/pretrained/scibert_scivocab_cased/vocab.txt"),
       do_lowercase: false,
       use_starting_offsets: true
     }
@@ -185,7 +185,7 @@ function(p) {
         type: "bert-pretrained",
         pretrained_model: (if p.use_bert_base then "bert-base-cased"
                            else if p.use_bert_large then "bert-large-cased"
-                           else "pretrained/scibert_scivocab_cased/weights.tar.gz"),
+                           else "/home/aida/covid_clean/dygiepp/pretrained/scibert_scivocab_cased/weights.tar.gz"),
         requires_grad: p.finetune_bert
       }
     }
@@ -348,7 +348,7 @@ function(p) {
     num_epochs: p.num_epochs,
     grad_norm: 5.0,
     patience : p.patience,
-    cuda_device : [std.parseInt(x) for x in std.split(std.extVar("cuda_device"), ",")],
+    cuda_device : [x for x in std.split(std.extVar("cuda_device"), ",")],
     validation_metric: validation_metrics[p.target],
     learning_rate_scheduler: p.learning_rate_scheduler,
     optimizer: p.optimizer,
