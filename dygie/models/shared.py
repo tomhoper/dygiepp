@@ -37,6 +37,7 @@ def fields_to_batches(d, keys_to_ignore=[]):
     # Make sure all input dicts have same length.
     keys = [key for key in d.keys() if key not in keys_to_ignore]
     lengths = [len(d[k]) for k in keys]
+    # import pdb; pdb.set_trace()
     assert len(set(lengths)) == 1
     length = lengths[0]
     res = [{k: d[k][i] for k in keys} for i in range(length)]
