@@ -22,7 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--name_list',
                         type=str,
                         help='name of annotators that we want to calc agreement(, seperated). the refrence is the first name',
-                        default="covid_anno_par",
+                        default="madeline,sara,megan",
                         required=True)
 
     parser.add_argument('--root',

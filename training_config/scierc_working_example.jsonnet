@@ -47,12 +47,12 @@ local params = {
   loss_weights: {          // Loss weights for the modules.
     ner: 1.0,
     relation: 1.0,
-    coref: 0.0,
+    coref: 1.0,
     events: 0.0
   },
   loss_weights_events: {   // Loss weights for trigger and argument ID in events.
-    trigger: 0.0,
-    arguments: 0.0,
+    trigger: 1.0,
+    arguments: 1.0,
   },
 
   // Coref settings.
@@ -70,7 +70,6 @@ local params = {
 
   // Model training
   batch_size: 8,
-  instances_per_epoch: 1000,
   num_epochs: 250,
   patience: 15,
   optimizer: {

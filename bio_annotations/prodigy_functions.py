@@ -40,8 +40,6 @@ def write_annotations_for_tom(input_filename):
         doc_id, text, arg0, arg1, rel, accept, _, edit, comment = line.split('\t')[:9]
         if accept == "reject":
             continue
-        # if not text.startswith("Further"):
-        #         continue
         if (doc_id, text) != key_text_pair_seen:
             if key_text_pair_seen != ('',''):
                 res = ut.convert_to_json(key_text_pair_seen[1], relation_info, key_text_pair_seen[0])
