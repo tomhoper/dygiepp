@@ -110,13 +110,18 @@
       type: 'ie_batch',
       batch_size: 1,
     },
+    distributed: {
+      "cuda_devices": [std.parseInt(x) for x in std.split(std.extVar("cuda_device"), ",")],
+      "master_port": std.parseInt(std.extVar("master_port"))
+    },
     trainer: {
+      "distributed": true,
+
       checkpointer: {
         num_serialized_models_to_keep: 3,
       },
       num_epochs: 50,
       grad_norm: 5.0,
-      cuda_device : [std.parseInt(x) for x in std.split(std.extVar("cuda_device"), ",")],
       validation_metric: validation_metrics[dygie.target_task],
       optimizer: {
         type: 'adamw',
