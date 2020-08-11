@@ -105,7 +105,8 @@ if __name__ == '__main__':
               "--output-file",
               str(pred_path),
               "--cuda-device",
-              args.device
+              args.device,
+              "--quiet"
       ]
 
     subprocess.run(" ".join(allennlp_command), shell=True, check=True)

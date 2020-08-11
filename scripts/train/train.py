@@ -44,9 +44,15 @@ if __name__ == '__main__':
 
     parser.add_argument('--device',
                         type=str,
-                        default='1',
+                        default='1,2,3',
                         required=False,
                         help="cuda devices comma seperated")
+
+    parser.add_argument('--master_port',
+                        type=str,
+                        default="2424",
+                        help='for pytorch distributed training',
+                        required=False)
 
     args = parser.parse_args()
     if args.single_source:
@@ -77,6 +83,7 @@ if __name__ == '__main__':
     if args.device:
         os.environ['CUDA_DEVICE'] = args.device
         os.environ['cuda_device'] = args.device
+        os.environ['master_port'] = args.master_port
 
     allennlp_command = [
             "allennlp",
