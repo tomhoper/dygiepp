@@ -70,7 +70,7 @@ correction:  3010
 prodigy rel.manual ner_rels_bio_madeline_correction blank:en correction_input_madeline.jsonl --label USED,EFFECT,DO --span-label ENTITY
 validation 3000:
 prodigy rel.manual ner_rels_bio_madeline_correction blank:en validation_input_madeline.jsonl --label USED,EFFECT,DO --span-label ENTITY
-
+ prodigy rel.manual ner_rels_bio_madeline_correction blank:en validation_input_madeline.jsonl --label USED,EFFECT,DO --span-label ENTITY
 
 
 TOM

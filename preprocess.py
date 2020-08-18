@@ -2,7 +2,7 @@
 Preprocess data from LaTex parses. Need to run on S3 machine 3, that's where the
 data are.
 """
-ANNOTATION_PATH = "../covid_clean_data/data/covid/json/bio_annotations/annotated_complete.tsv"
+ANNOTATION_PATH = "/bio_annotations/annotated_complete.tsv"
 
 import os
 import multiprocessing
@@ -624,24 +624,4 @@ if __name__ == "__main__":
             create_annotated_covid_noise(args.mech_effect_mode, args.root, args.annotation_path)
         else:
             create_annotated_covid(args.mech_effect_mode, args.root, args.annotation_path)
-    # print("hereeeeee")
-    # process_metadata_csv("metadata")]
-    # create_annotated_covid(True)
-    # names = glob("/data/aida/cord19/*/*/*/*.json")
-    # # import pdb; pdb.set_trace()
-    # # # names = names[:100]
-    # # process_article(names[0])
 
-    # # # process_article(names[0])
-    # workers = multiprocessing.Pool(56)
-    # start = time.time()
-
-    # results = workers.map(safe_process_article, names)
-
-    # elapsed = (time.time() - start) / 60
-
-    # print()
-    # print(f"Elapsed: {elapsed:0.2f}")
-
-    # results = pd.DataFrame(results, columns=["paper_id", "status"])
-    # results.to_csv("results/preprocess-status.tsv", sep="\t", index=False)

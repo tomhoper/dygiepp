@@ -1,4 +1,4 @@
-local template = import "template.libsonnet";
+local template = import "/home/aida/covid_clean/dygiepp/training_config/template.libsonnet";
 
 template.DyGIE {
   bert_model: "allenai/scibert_scivocab_cased",
