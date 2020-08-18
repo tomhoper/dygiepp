@@ -7,7 +7,7 @@ from os import path
 CORRECTION_DIR_PATH = "corrections/jsons/"
 ANNOTATION_DIR_PATH = "annotations/jsons/"
 NEEDED_CORRECTION_INDEX_PATH = "correction_indexes/"
-DEFAULT_NAME_LIST = ["madeline", "megan", "sara", "yeal"]
+DEFAULT_LIST = ["sara", "megan", "madeline", "kristina", "jeff"]
 
 def read_correction_indexes(index_filename):
     if not path.exists(index_filename):
@@ -188,7 +188,7 @@ def create_validation_input(annotator_name, others_namelist):
         correction_other = ut.read_data_base(CORRECTION_DIR_PATH + "corrections_" + name + '.jsonl', name)
     
       correction_key_version_map = get_latest_correction_version(correction_other)
-      print(correction_other)
+      # print(correction_other)
       for item in correction_other:
         doc_key = item['meta']['doc_key'].split('_::_')
         if item['answer'] == "reject" or item['answer'] == 'ignore':
@@ -220,7 +220,8 @@ def make_correction_data(data_list, output_file_name):
       output_file.write("\n")
 
 def write_annotations_for_tom_jsonl(complete_set):
-    already_annotated_list = ut.read_already_annotated(["ner_rels_bio_tom_correction"])
+    already_annotated_list = ut.read_already_annotated(["ner_rels_bio_tom_correction_NEW"])
+    print("already_annotated_list")
     print(len(already_annotated_list))
     output_file = open("tom_curation2_file.jsonl", "w")
     count = 0
@@ -236,26 +237,155 @@ def write_annotations_for_tom_jsonl(complete_set):
         output_file.write('\n')
     print(count)
 
+def update_annotations_corrections():
+    ut.update_extractions(ut.DEFAULT_NAME_LIST, ut.ANNOTATION_DIR_PATH, annotations_correction="annotations")
+    ut.update_extractions(ut.DEFAULT_CORRECTION_NAME_LIST, ut.CORRECTION_DIR_PATH, annotations_correction="correction")
+    ut.merge_with_old(ut.ANNOTATION_DIR_PATH + "jsons/", ut.ANNOTATION_DIR_PATH_OLD + 'jsons/')
+    ut.merge_with_old(ut.CORRECTION_DIR_PATH + "jsons/", ut.CORRECTION_DIR_PATH_OLD + 'jsons/')
+
+    for name in ut.DEFAULT_NAME_LIST:
+        annotation_name = 'annotations_' + name + '.jsonl'
+        annotation_name_tsv = 'annotations_' + name + '.tsv'
+        annotation_json_file = pathlib.Path(ut.ANNOTATION_DIR_PATH) / "jsons" / annotation_name
+        annotation_tsv_file = pathlib.Path(ut.ANNOTATION_DIR_PATH) / "tsvs" / annotation_name_tsv
+        # ut.visualize_the_annotations_to_tsv(annotation_json_file, annotation_tsv_file)
+    for name in ut.DEFAULT_CORRECTION_NAME_LIST:
+        annotation_name = 'corrections_' + name + '.jsonl'
+        annotation_name_tsv = 'corrections_' + name + '.tsv'
+        correction_json_file = pathlib.Path(ut.CORRECTION_DIR_PATH) / "jsons" / annotation_name
+        correction_tsv_file = pathlib.Path(ut.CORRECTION_DIR_PATH) / "tsvs" / annotation_name_tsv
+        # ut.visualize_the_annotations_to_tsv(correction_json_file, correction_tsv_file)
+
+def write_annotations_for_tom(input_filename):
+    input_file = open(input_filename)
+    key_text_pair_seen = ('','')
+    relation_info = []
+    count = 0 # to add the lines more than 274
+    already_annotated_list = ut.read_already_annotated(["ner_rels_bio_tom_correction"])
+    print(len(already_annotated_list))
+    output_file = open("tom_curation_file.jsonl", "w")
+    seen_list = [0 for x in range(len(already_annotated_list))]
+    edit_needed = False
+    for line in input_file:
+        count += 1
+        # import pdb; pdb.set_trace()
+        doc_id, text, arg0, arg1, rel, accept, _, edit, comment = line.split('\t')[:9]
+        if accept == "reject":
+            continue
+        if (doc_id, text) != key_text_pair_seen:
+            if key_text_pair_seen != ('',''):
+                res = ut.convert_to_json(key_text_pair_seen[1], relation_info, key_text_pair_seen[0])
+                if (edit_needed or count > 273) and (key_text_pair_seen[0], key_text_pair_seen[1]) not in already_annotated_list:
+                    json.dump(res, output_file)
+                    output_file.write('\n')
+            relation_info = []
+            edit_needed = False
+            if edit != '':
+                edit_needed = True
+            key_text_pair_seen = (doc_id, text)
+            relation_info.append((rel, arg0, arg1))
+        else: 
+            if edit != '':
+                edit_needed = True
+            relation_info.append((rel, arg0, arg1))
+
+    res = ut.convert_to_json(key_text_pair_seen[1], relation_info, key_text_pair_seen[0])
+    if (edit_needed or count > 273) and (key_text_pair_seen[0], key_text_pair_seen[1]) not in already_annotated_list:
+        json.dump(res, output_file)
+        output_file.write('\n')
+    import pdb; pdb.set_trace()
+
+
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()  # pylint: disable=invalid-name
 
-  parser.add_argument('--names',
+  parser.add_argument('--name',
+                      type=str,
+                      default="madeline",
+                      help='annotator name, comma seperated',
+                      required=False)
+  parser.add_argument('--others',
                       type=str,
                       default="megan,sara,madeline",
-                      help='annotator names, comma seperated',
+                      help='other annotator\' names for validations, comma seperated',
                       required=False)
+  
+  parser.add_argument('--command_type',
+                      type=str,
+                      default="megan,sara,madeline",
+                      help='Please select one of the following options \n \
+                            annotator_stat --> get the data and stats of one specific person annotations\n \
+                            self_correction --> get the correction file for a annotator\n \
+                            rel-validation --> get validation for one person from other people\'s annotations in relation level\n \
+                            par-validation--> get validation for one person from other people\'s annotations in relation level\n \
+                            prodigy-json-by-tsv --> converts the tsv file to the prodigy formatted json \n \
+                            all-data --> get all the dataset annotated ready \n\
+                            prodigy-upload --> get the port and data and runs the command to load the annotation site(please set flag for correction or validation to load those data or give the datafile directly',
+                      required=False)
+
+  parser.add_argument('--correction',
+                        action='store_true')
+
+  parser.add_argument('--validation',
+                        action='store_true')
+
+  parser.add_argument('--input_filename',
+                      type=str,
+                      default="",
+                      help='The input file name for loading prodigy link(if not given the default values will be used)',
+                      required=False)
+
+  parser.add_argument('--port',
+                      type=str,
+                      default="2222",
+                      help='The port number to run prodigy annotation link on ',
+                      required=False)
+
+
   parser.add_argument('--annotations_path',
                       type=str,
                       default="data/covid/json/bio_annotations",
                       help='where to save the path to merged annotations',
                       required=False)
   args = parser.parse_args()
-  if args.names != "":
-    name_list = args.names.split(',')
-  else:
-    name_list = DEFAULT_NAME_LIST
+
+  if args.command_type == "annotator_stat":
+    write_all_annotations(args.name)
+  elif args.command_type == "self_correction":
+    create_correction_input(args.name)
+  elif args.command_type == "rel-validation":
+    print("TODO")
+  elif args.command_type == "prodigy-upload":
+      input_filename = ""
+      db_name = ""
+      # findin the input file name for the link
+      if args.input_filename != ""
+        input_filename = args.input_filename
+      else:
+        if args.validation == True:
+          input_filename = "validation_input_" + args.name + ".jsonl"
+        elif args.correction == True:
+          input_filename = "correction_input_" + args.name + '.jsonl'
+        else:
+          input_filename = 'input_' + args.name + '.jsonl'
+  
+      db_name = "ner_rels_bio_" + args.name
+      if args.validation == True or args.correction == True:
+        db_name = db_name + '_correction'
+        if args.name == "tom":  #since the name was changed
+          db_name = db_name + "_NEW"
+
+      ut.run_prodigy_command(input_filename, db_name, args.port)
+
+  elif args.command_type == "par-validation":
+      if args.others == "":
+          print("Error: we need a list of people to validate, switching to default list of " + str(DEFAULT_LIST))
+          args.others = DEFAULT_LIST
+      else:
+        args.others = args.others.split(",")
+      create_validation_input(args.name, args.others)
   # print(name_list)
 
 # "bxxw0eey_abstract"
@@ -264,10 +394,11 @@ if __name__ == "__main__":
   # ut.update_extractions(["aida"], "annotations/")
   # for name in name_list:
   #   create_correction_input(name, full_mode=False)
-  data = write_all_annotations(["madeline"])
-  write_annotations_for_tom_jsonl(data)
-  # create_validation_input("tom_jeff", ["jeff"])
+  # data = write_all_annotations(["madeline"])
+  # write_annotations_for_tom_jsonl(data)
+  create_validation_input("madeline", ["tom"])
   # create_validation_input("tom_kristina", ["kristina"])
+
 
 
 

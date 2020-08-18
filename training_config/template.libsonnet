@@ -133,7 +133,7 @@
             {
               lr: 5e-5,
               weight_decay: 0.01,
-              finetune: true,
+              finetune: false,
             },
           ],
         ],

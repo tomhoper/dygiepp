@@ -17,6 +17,56 @@ CORRECTION_DIR_PATH_OLD = "corrections_old/"
 DEFAULT_NAME_LIST = ["madeline", "megan", "sara", "yeal", "tom"]
 DEFAULT_CORRECTION_NAME_LIST = ["madeline", "megan", "sara"]
 
+def find_span_start_token_in_text(text, span):
+    text_tokens = process_paragraph(text)
+    span_tokens = process_paragraph(span)
+    start_index = -1
+    span_found = False
+    while start_index < len(text_tokens):
+      if text_tokens[start_index] == span_tokens[0]:
+        span_found = True
+        for i in range(len(span_tokens)):
+          if start_index + i < len(text_tokens) or span_tokens[i] != text_tokens[start_index + i]:
+            span_found = False
+            break
+      if span_found == True:
+        return start_index
+      start_index += 1
+    return -1
+
+
+def find_stats_span_distance(dataset):
+    # the data set it a list of data
+    #each data point is a list of [id, text, arg0, arg1]
+    ave_distance = 0
+    total_count = 0
+    max_distance = 0
+    for data in dataset:
+      arg0_index = find_span_start_token_in_text(data[1], data[2])
+      arg1_index = find_span_start_token_in_text(data[1], data[3])
+      total_count += 1
+      dist = abs(arg1_index - arg0_index)
+      ave_distance += dist
+      if dist > max_distance:
+        max_distance = dist
+    print("average distance of spans is : " + str(float(ave_distance)/total_count))
+    print("max distance of spans in a relation  is : " + str(max_distance))
+
+def find_stats_span_length(dataset):
+    # the data set it a list of data
+    #each data point is a list of [id, text, arg0, arg1]
+    total_count = 0
+    arg0_ave = 0
+    arg1_ave = 0
+    for data in dataset:
+      args0_toks = process_paragraph(data[2]) 
+      args1_toks = process_paragraph(data[3])
+      total_count += 1
+      arg0_ave += len(args0_toks)
+      arg1_ave += len(args1_toks)
+    print("average length of spans in arg0 is :" + str(float(arg0_ave/total_count)))
+    print("average length of spans in arg1 is :" + str(float(arg1_ave/total_count)))
+
 def read_already_annotated(db_name_list):
     #used in functions to create unique new annotations. 
     # given the name of the dataset we get the list of what has been already save as annotated there
@@ -224,15 +274,15 @@ def update_extractions(name_list, annotation_path, annotations_correction="annot
     # if name == "sara":
     #   db_file = "ner_rels_bio_sara_v2"    
     annotation_name = 'annotations_' + name + '.jsonl'
-    annotation_output_file = pathlib.Path(annotation_path) / "jsons" / annotation_name
+    annotation_output_file = pathlib.Path(annotation_path) / "jsons" 
 
     if annotations_correction == "correction":
       annotation_name = 'corrections_' + name + '.jsonl'
-      annotation_output_file = pathlib.Path(annotation_path) / "jsons" / annotation_name
+      annotation_output_file = pathlib.Path(annotation_path) / "jsons" 
       db_file = db_file + "_correction"
-      # if name == "sara":
-      #   db_file = "ner_rels_bio_sara_v2"
-    run_prodigy_db_out(db_file, str(annotation_output_file))
+      if name == "tom":
+        db_file = db_file + "_NEW"
+    run_prodigy_db_out(db_file, str(annotation_output_file) + '/' , annotation_name)
     print("retrieved annotations of " + name)
 
 def merge_with_old(new_path, old_path):

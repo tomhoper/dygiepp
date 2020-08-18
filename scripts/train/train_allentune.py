@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--config',
                         type=str,
-                        default="./training_config/scierc_working_allentune.jsonnet",
+                        default="./training_config/scierc_lightweight.jsonnet",
                         help='training config',
                         required=False)
 
@@ -124,8 +124,10 @@ if __name__ == '__main__':
     if args.gpu_count > 0:
         os.environ['CUDA_DEVICE'] = ",".join([str(i) for i in range(args.gpu_count)])
         os.environ['cuda_device'] = ",".join([str(i) for i in range(args.gpu_count)])
+        os.environ['master_port'] = '2323'
     
     allennlp_command = [
+            "CUDA_VISIBLE_DEVICES=0,1,2,3",
             "allentune",
             "search",
             "--experiment-name",
@@ -135,9 +137,9 @@ if __name__ == '__main__':
             "--num-cpus",
             str(cpu_count),
             "--gpus-per-trial",
-            str(1),
+            str(gpu_count),
             "--cpus-per-trial",
-            str(2),  
+            str(1),  
             "--search-space",
             search_space,
             "--num-samples",
