@@ -1,4 +1,7 @@
 {
+  local DROPOUT = std.parseJson(std.extVar("DROPOUT")),
+  local LEARNING_RATE = std.parseJson(std.extVar("LEARNING_RATE")),
+  local HIDDEN_SIZE = std.parseInt(std.extVar("HIDDEN_SIZE")),
   DyGIE: {
     local dygie = self,
 
@@ -29,7 +32,7 @@
     // If using a different BERT, this number may be different. It's up to the user to set the
     // appropriate value.
     max_wordpieces_per_sentence :: 512,
-    max_span_width :: 8,
+    max_span_width :: 12,
     cuda_device :: -1,
 
     ////////////////////
@@ -83,8 +86,8 @@
       target_task: dygie.target_task,
       feedforward_params: {
         num_layers: 2,
-        hidden_dims: 150,
-        dropout: 0.4,
+        hidden_dims: HIDDEN_SIZE,
+        dropout: DROPOUT,
       },
       modules: {
         coref: {
@@ -110,12 +113,10 @@
       type: 'ie_batch',
       batch_size: 1,
     },
-    distributed: {
-      "cuda_devices": [std.parseInt(x) for x in std.split(std.extVar("cuda_device"), ",")],
-      "master_port": std.parseInt(std.extVar("master_port"))
-    },
+
     trainer: {
-      "distributed": true,
+      "distributed": false,
+      "cuda_device": 0,
 
       checkpointer: {
         num_serialized_models_to_keep: 3,
@@ -125,7 +126,7 @@
       validation_metric: validation_metrics[dygie.target_task],
       optimizer: {
         type: 'adamw',
-        lr: 1e-3,
+        lr: LEARNING_RATE,
         weight_decay: 0.0,
         parameter_groups: [
           [
