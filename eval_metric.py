@@ -6,7 +6,7 @@ import subprocess
 from typing import Any, Dict
 import sys
 import pandas as pd
-from eval_utils import depparse_base, allpairs_base, get_openie_predictor,get_srl_predictor,allenlp_base_relations, ie_eval, ie_span_eval
+from eval_utils import depparse_base, allpairs_base, get_openie_predictor,get_srl_predictor,allenlp_base_relations, ie_eval, ie_span_eval, ie_errors
 import pathlib
 from pathlib import Path
 import pandas as pd
@@ -45,12 +45,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
-        gold_path = pathlib.Path(args.root) / 'gold_madeline' /  'mech_effect' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_final' /  'mech_effect' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
-        gold_path = pathlib.Path(args.root) / 'gold_madeline' /  'mech' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_final' /  'mech' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
@@ -109,13 +109,19 @@ if __name__ == '__main__':
                 if match_metric == 'jaccard':
                     th_opts = [0.3, 0.4, 0.5]
                 for th in th_opts:
+
                     k_th = [100, 150, 200]
                     p_at_k = []
                     for topK in k_th:
                         _, p, _, _ = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK)
                         p_at_k.append(p)
-
-
+                    if match_metric == "substring" and collapse == False:
+                        print("hereeee")
+                        errors = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
+                    if match_metric == "substring" and collapse == True:
+                        print("hereeee")
+                        errors_collapse = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
+                    
                     corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
                     span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
                     res = [k, precision, recall, F1, p_at_k[0],p_at_k[1],p_at_k[2] , mech_effect, collapse, match_metric, th]
@@ -130,5 +136,10 @@ if __name__ == '__main__':
     stats_path = stat_path / 'stats.tsv'
     stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
 
+    errors_path = stat_path / 'errors_non_collapse.tsv'
+    errors_collapse_path = stat_path / 'errors_collapse.tsv'
+
+    errors.to_csv(errors_path,header=True,index=False, sep="\t")
+    errors_collapse.to_csv(errors_collapse_path,header=True,index=False, sep="\t")
 
 
