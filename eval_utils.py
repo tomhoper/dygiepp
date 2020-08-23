@@ -263,7 +263,7 @@ def find_transivity_relations(rels):
 
     return rels
 
-def annotation_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True):
+def annotation_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=False):
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
@@ -360,9 +360,12 @@ def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5
                             gold_spans.append([i,pair[0][pair0_ind]])
 
                         m = span_matching(pair[0][pair0_ind], pair[1][pair1_ind],match_metric,thresh=jaccard_thresh)   
-                        if m and ((i,pair[0][pair0_ind]) not in seen_pred_gold):
-                            good_preds.append([i,pair[0][pair0_ind]])
-                            seen_pred_gold[(i,pair[0][pair0_ind])]=1
+                        if m and ((i,pair[0][pair0_ind],pair[1][pair1_ind]) not in seen_pred_gold):
+                            if [i,pair[1][pair1_ind]] not in good_preds:
+                                if [i,pair[1][pair1_ind]] not in pred_spans:
+                                    import pdb; pdb.set_trace()
+                                good_preds.append([i,pair[1][pair1_ind]])
+                            seen_pred_gold[(i,pair[0][pair0_ind],pair[1][pair1_ind])]=1
     
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold"])
     corr_pred = corr_pred.drop_duplicates()
@@ -373,6 +376,8 @@ def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5
     predspans = predspans.drop_duplicates()
 
     # import pdb; pdb.set_trace()
+    if len(good_preds) > len(predspans):
+        import pdb; pdb.set_trace()
     TP = corr_pred.shape[0]
     FP = predspans.shape[0] - TP
     FN = goldspans.shape[0] - TP
@@ -431,7 +436,8 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     if len(pair[0][0]) == 1:
                         import pdb; pdb.set_trace()
-                    good_preds.append([i,pair[0][0],pair[0][1]])
+                    if [i,pair[1][0],pair[1][1]] not in good_preds:
+                        good_preds.append([i,pair[1][0],pair[1][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
     
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
@@ -439,6 +445,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
     TP = corr_pred.shape[0]
     FP = topK - TP
     FN = goldrels.shape[0] - TP
+
 
     precision = TP/(TP+FP)
     recall = TP/(FN+TP)
@@ -450,6 +457,11 @@ def ie_errors(relations, golddf, coref=None, collapse = False, match_metric="sub
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
+
+    gold_id_text = golddf[["id","text"]]
+    gold_id_text = gold_id_text.drop_duplicates(subset =["id","text"]).set_index("id")
+
+
 
     if coref != None:
         corefrels = coref.set_index("id")
@@ -472,7 +484,9 @@ def ie_errors(relations, golddf, coref=None, collapse = False, match_metric="sub
     seen_pred_gold = {}
     for i in predrels.index.unique():
         if i in goldrels_trans.index.unique():
+            # import pdb; pdb.set_trace()
             gold = goldrels_trans.loc[[i]]
+            gold_text_id = gold_id_text.loc[[i]]
             coref_rels = None
             if coref != None:
                 coref_rels = corefrels.loc[i]
@@ -481,6 +495,7 @@ def ie_errors(relations, golddf, coref=None, collapse = False, match_metric="sub
             else:
                 preds = predrels.loc[i].values
             c = list(itertools.product(gold.values, preds))
+            found_count = 0
             for pair in c:
 
                 if collapse:
@@ -493,18 +508,24 @@ def ie_errors(relations, golddf, coref=None, collapse = False, match_metric="sub
                     gold_mathced.append((pair[0][0],pair[0][1]))
                     pred_matched.append((pair[1][0],pair[1][1]))
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
-            seen_rels = []
-            for pair in c:
-                if (pair[0][0],pair[0][1]) not in gold_mathced and  (pair[0][0],pair[0][1]) not in seen_rels:
-                    not_found.append([i, "", "", "", pair[0][0],pair[0][1], pair[0][2]])
-                    seen_rels.append((pair[0][0],pair[0][1]))
-                if (pair[1][0],pair[1][1]) not in pred_matched and (pair[1][0],pair[1][1]) not in seen_rels:
-                    not_found.append([i, pair[1][0],pair[1][1], pair[1][2], "", "", ""])
-                    seen_rels.append((pair[1][0],pair[1][1]))
+                    found_count += 1
 
+            # only add relations of the predictions samples that are not doing good
+            if float(found_count/len(preds)) < 0.5:
+                seen_rels = []
+                for pair in c:
+                    # if (pair[0][0],pair[0][1]) not in gold_mathced and  (pair[0][0],pair[0][1]) not in seen_rels:
+                    if (pair[0][0],pair[0][1]) not in seen_rels:
+                        not_found.append([i, gold_text_id.iloc[0]["text"], "", "", "", pair[0][0],pair[0][1], pair[0][2]])
+                        seen_rels.append((pair[0][0],pair[0][1]))
+                
+                for pair in c:
+                    if (pair[1][0],pair[1][1]) not in pred_matched and (pair[1][0],pair[1][1]) not in seen_rels:
+                        not_found.append([i,gold_text_id.iloc[0]["text"], pair[1][0],pair[1][1], pair[1][2], "", "", ""])
+                        seen_rels.append((pair[1][0],pair[1][1]))
                 
     
-    wrong_preds = pd.DataFrame(not_found,columns=["docid","arg0_pred","arg1_pred", "pred_label" ,"arg0_gold","arg1_gold", "gold_label"])
+    wrong_preds = pd.DataFrame(not_found,columns=["docid","text","arg0_pred","arg1_pred", "pred_label" ,"arg0_gold","arg1_gold", "gold_label"])
     
     return wrong_preds
 
