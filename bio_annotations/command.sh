@@ -90,5 +90,6 @@ tom kristina validation 2224
 
 
 tom_curation2_file
+prodigy rel.manual tom_stiching_test blank:en ./for_tom_to_correct.jsonl --label USED,EFFECT,DO --span-label ENTITY
 
 

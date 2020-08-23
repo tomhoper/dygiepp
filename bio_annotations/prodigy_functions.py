@@ -337,11 +337,20 @@ if __name__ == "__main__":
                         help='path to final set of annotations',
                         required=False)
 
+  parser.add_argument('--output_data_name',
+                        type=str,
+                        default="final",
+                        help='path to final set of annotations',
+                        required=False)
+
   parser.add_argument('--root',
                         type=str,
                         default="/data/aida/covid_clean/",
                         help='path to complete set of annotations',
                         required=False)
+
+  parser.add_argument('--needs_update',
+                        action='store_true')
 
   parser.add_argument('--correction',
                         action='store_true')
@@ -362,11 +371,6 @@ if __name__ == "__main__":
                       required=False)
 
 
-  parser.add_argument('--annotations_path',
-                      type=str,
-                      default="data/covid/json/bio_annotations",
-                      help='where to save the path to merged annotations',
-                      required=False)
   args = parser.parse_args()
 
   if args.command_type == "annotator_stat":
@@ -405,22 +409,23 @@ if __name__ == "__main__":
         args.others = args.others.split(",")
       create_validation_input(args.name, args.others)
   elif args.command_type == "all-data":
-      ut.update_extractions(["tom"], ut.CORRECTION_DIR_PATH, annotations_correction="correction")
+      if args.needs_update:
+        ut.update_extractions(["tom"], ut.CORRECTION_DIR_PATH, annotations_correction="correction")
 
-      annotation_name = 'corrections_tom.jsonl'
-      annotation_name_tsv = 'corrections_tom.tsv'
-      correction_json_file = pathlib.Path(ut.CORRECTION_DIR_PATH) / "jsons" / annotation_name
-      correction_tsv_file = pathlib.Path(ut.CORRECTION_DIR_PATH) / "tsvs" / annotation_name_tsv
-      dataset = ut.read_data_base(correction_json_file, annotator_name="tom")
-      ut.visualize_the_annotations_to_tsv(dataset, correction_tsv_file)
+        annotation_name = 'corrections_tom.jsonl'
+        annotation_name_tsv = 'corrections_tom.tsv'
+        correction_json_file = pathlib.Path(ut.CORRECTION_DIR_PATH) / "jsons" / annotation_name
+        correction_tsv_file = pathlib.Path(ut.CORRECTION_DIR_PATH) / "tsvs" / annotation_name_tsv
+        dataset = ut.read_data_base(correction_json_file, annotator_name="tom")
+        ut.visualize_the_annotations_to_tsv(dataset, correction_tsv_file)
 
       test_keys, dev_keys = dc.get_test_indexes(args.annotated_path)
-      dc.create_annotated_covid(True, args.root, args.annotated_path, test_keys, dev_keys)
+      dc.create_annotated_covid(True, args.root, args.annotated_path, test_keys, dev_keys, args.output_data_name)
       print('mech only data created')
-      dc.create_annotated_covid(False, args.root, args.annotated_path, test_keys, dev_keys)
+      dc.create_annotated_covid(False, args.root, args.annotated_path, test_keys, dev_keys, args.output_data_name)
       print('mech effect data created')
-      dc.write_gold_file(True, args.root, args.annotated_path, test_keys)
+      dc.write_gold_file(True, args.root, args.annotated_path, test_keys, args.output_data_name)
       print('mech only gold created')
 
-      dc.write_gold_file(False, args.root, args.annotated_path, test_keys)
+      dc.write_gold_file(False, args.root, args.annotated_path, test_keys, args.output_data_name)
       print('mech effect gold created')

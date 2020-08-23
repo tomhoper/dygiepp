@@ -160,11 +160,11 @@ def write_scierc_format_data(annotation_dict, output_file, mech_only_flag, test_
         output_file.write("\n")
 
 
-def create_annotated_covid(mech_only_flag, root_path, annotated_path, test_keys, dev_keys):
+def create_annotated_covid(mech_only_flag, root_path, annotated_path, test_keys, dev_keys, output_data_name):
     if mech_only_flag== True:
-        DATA_PATH= root_path + "/UnifiedData/covid_anno_par_final/mapped/mech/"
+        DATA_PATH= root_path + "/UnifiedData/covid_anno_par_" + output_data_name + "/mapped/mech/"
     else:
-        DATA_PATH= root_path + "/UnifiedData/covid_anno_par_final/mapped/mech_effect/"
+        DATA_PATH= root_path + "/UnifiedData/covid_anno_par_" + output_data_name + "/mapped/mech_effect/"
     
     data_dir = pathlib.Path(DATA_PATH)
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -213,14 +213,14 @@ def create_annotated_covid(mech_only_flag, root_path, annotated_path, test_keys,
     write_scierc_format_data(train_annotation_dict, output_file_train, mech_only_flag, test_flag=False)
 
 
-def write_gold_file(mech_only_flag, root_path, annotated_path, test_keys):
+def write_gold_file(mech_only_flag, root_path, annotated_path, test_keys, output_data_name):
     
     input_file = open(annotated_path)
     annotation_dict = {}
     if mech_only_flag == True:
-        output_file_path = root_path + "/gold_final/mech/"
+        output_file_path = root_path + "/gold_" + output_data_name + "/mech/"
     else:
-        output_file_path = root_path + "/gold_final/mech_effect/"
+        output_file_path = root_path + "/gold_" + output_data_name + "/mech_effect/"
 
     data_dir = pathlib.Path(output_file_path)
     data_dir.mkdir(parents=True, exist_ok=True)

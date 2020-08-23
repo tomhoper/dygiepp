@@ -67,6 +67,29 @@ def find_stats_span_length(dataset):
     print("average length of spans in arg0 is :" + str(float(arg0_ave/total_count)))
     print("average length of spans in arg1 is :" + str(float(arg1_ave/total_count)))
 
+def length_distributions(dataset):
+    # the data set it a list of data
+    #each data point is a list of [id, text, arg0, arg1] 
+    arg0_len = [0 for x in range(40)]
+    arg1_len = [0 for x in range(40)]
+    for data in dataset:
+      args0_toks = process_paragraph(data[2]) 
+      args1_toks = process_paragraph(data[3])
+      arg0_len[len(args0_toks)] += 1
+      arg1_len[len(args1_toks)] += 1
+    total_len = [arg0_len[x] + arg1_len[x] for x in range(len(arg0_len))]
+    print("length distribution of spans in arg0 is :" + str(arg0_len))
+    print("length distribution of spans in arg1 is :" + str(arg1_len))
+    print("length distribution of spans in total args is :" + str(total_len))
+    arg0_percentile = [sum(arg0_len[:i+1])/sum(arg0_len) for i in range(len(arg0_len)-1)]
+    arg1_percentile = [sum(arg1_len[:i+1])/sum(arg1_len) for i in range(len(arg1_len)-1)]
+    total_percentile = [sum(total_len[:i+1])/sum(total_len) for i in range(len(total_len)-1)]
+    print("length percentiles of spans in arg0 is :" + str(arg0_percentile))
+    print("length percentiles of spans in arg1 is :" + str(arg1_percentile))
+    print("length percentiles of spans in total is :" + str(total_percentile))
+    
+
+
 def read_already_annotated(db_name_list):
     #used in functions to create unique new annotations. 
     # given the name of the dataset we get the list of what has been already save as annotated there
@@ -108,7 +131,7 @@ def convert_to_json(text, relation_pairs, doc_key):
   res["meta"]["section"] = "Abstract"
   res["meta"]["doc_key"] = doc_key
   
-  tokens = process_paragraph(text.lower())
+  tokens = process_paragraph(text.replace("  ", " "))
   res["tokens"] = []
   res["spans"] = []
   res["relations"] = []
@@ -121,10 +144,10 @@ def convert_to_json(text, relation_pairs, doc_key):
     tok_info = {}
     tok_info["text"] = tok
     try:
-      tok_info["start"] = text.lower().index(tok, ind_start)
+      tok_info["start"] = text.lower().index(tok.lower(), ind_start)
     except:
       import pdb; pdb.set_trace()
-    tok_info["end"] = text.lower().index(tok, ind_start) + len(tok)
+    tok_info["end"] = text.lower().index(tok.lower(), ind_start) + len(tok)
     
     # if tok not in seen_tokens:
     #   seen_tokens.append(tok)
