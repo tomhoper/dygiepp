@@ -3,7 +3,7 @@
 - `raw`: Raw data, copied over from elsewhere.
   - `spike`
     - `train.jsonl`: Taken from `spike_train_20200822.jsonl` via google drive: https://drive.google.com/file/d/1yV3WwrXSNCgetfDYr-z4A6DeYBalCjtI/view?usp=sharing.
-  - `covid`: Copied from `allgood:/data/aida/covid_clean/UnifiedData/covid_anno_par_s_final/mapped/mech`.
+  - `covid`: Copied from `allgood:/data/aida/covid_clean/UnifiedData/covid_anno_par_s_final/mapped/mech_effect`.
 - `cleanup`
   - Remove `section` from the covid data.
   - Remove the NER annotations from the spike data.
