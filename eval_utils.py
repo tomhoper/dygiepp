@@ -141,7 +141,7 @@ def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, f
                           if labels[0]==labels[1]:
                             return True
                   # considering the reverse direction for evaluating relation
-                  if consider_reverse == True and match == False:
+                  if consider_reverse == True:
                     if span_matching(pair1_arg0,pair2_arg1,metric,thresh):
                       arg0match = True
                       if span_matching(pair1_arg1,pair2_arg0,metric,thresh):
@@ -340,6 +340,7 @@ def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5
     good_preds = []
     gold_spans = []
     pred_spans = []
+    found_from_gold = []
     seen_pred_gold = {}
     for i in predrels.index.unique():
         if i in goldrels.index.unique():
@@ -362,13 +363,16 @@ def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5
                         m = span_matching(pair[0][pair0_ind], pair[1][pair1_ind],match_metric,thresh=jaccard_thresh)   
                         if m and ((i,pair[0][pair0_ind],pair[1][pair1_ind]) not in seen_pred_gold):
                             if [i,pair[1][pair1_ind]] not in good_preds:
-                                if [i,pair[1][pair1_ind]] not in pred_spans:
-                                    import pdb; pdb.set_trace()
                                 good_preds.append([i,pair[1][pair1_ind]])
+                            if [i,pair[0][pair0_ind]] not in found_from_gold:
+                                found_from_gold.append([i,pair[0][pair0_ind]])
                             seen_pred_gold[(i,pair[0][pair0_ind],pair[1][pair1_ind])]=1
     
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold"])
+    corr_gold = pd.DataFrame(found_from_gold,columns=["docid","arg0_gold"])
     corr_pred = corr_pred.drop_duplicates()
+    corr_gold = corr_gold.drop_duplicates()
+
     
     goldspans = pd.DataFrame(gold_spans,columns=["docid","arg0_gold"])
     goldspans = goldspans.drop_duplicates()
@@ -379,17 +383,18 @@ def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5
     if len(good_preds) > len(predspans):
         import pdb; pdb.set_trace()
     TP = corr_pred.shape[0]
+    TP_for_recal = corr_gold.shape[0]
     FP = predspans.shape[0] - TP
-    FN = goldspans.shape[0] - TP
+    FN = goldspans.shape[0] - TP_for_recal
 
     precision = TP/(TP+FP)
-    recall = TP/(FN+TP)
+    recall = TP_for_recal/(FN+TP_for_recal)
 
     F1 = 2*(precision * recall) / (precision + recall)
 
     return corr_pred, precision,recall, F1
 
-def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None):
+def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None, consider_reverse=False):
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
@@ -405,17 +410,19 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
     else:
         predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
 
-
-
+    
     if transivity:
         goldrels_trans = find_transivity_relations(goldrels)
         predrels_trans = find_transivity_relations(predrels) 
 
     good_preds = []
+    found_from_gold = []
     seen_pred_gold = {}
     if topK == None:
         topK = len(predrels)
-    for i in predrels[:topK].index.unique():
+    
+    predrels = predrels[:topK]
+    for i in predrels.index.unique():
         if i in goldrels_trans.index.unique():
             gold = goldrels_trans.loc[[i]]
             coref_rels = None
@@ -431,24 +438,33 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                     labels = [1,1]
                 else:
                     labels = [pair[0][2],pair[1][2]]
-                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels)
+                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
                 #changing this so that it can check all the coref matches of args.if m and
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     if len(pair[0][0]) == 1:
                         import pdb; pdb.set_trace()
                     if [i,pair[1][0],pair[1][1]] not in good_preds:
                         good_preds.append([i,pair[1][0],pair[1][1]])
+                    if [i,pair[0][0],pair[0][1]] not in found_from_gold:
+                        found_from_gold.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
     
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
+    corr_gold = pd.DataFrame(found_from_gold,columns=["docid","arg0_gold","arg1_gold"])
     corr_pred = corr_pred.drop_duplicates()
+    corr_gold = corr_gold.drop_duplicates()
+    
+
     TP = corr_pred.shape[0]
+    TP_for_recal = corr_gold.shape[0]
     FP = topK - TP
-    FN = goldrels.shape[0] - TP
+    FN = goldrels.shape[0] - TP_for_recal
+    if FN < 0: 
+        import pdb; pdb.set_trace()
 
 
     precision = TP/(TP+FP)
-    recall = TP/(FN+TP)
+    recall = TP_for_recal/(FN+TP_for_recal)
 
     F1 = 2*(precision * recall) / (precision + recall)
     return corr_pred, precision,recall, F1
@@ -469,8 +485,6 @@ def ie_errors(relations, golddf, coref=None, collapse = False, match_metric="sub
     if "conf" in relations.columns:
         predrels = relations[["id","arg0","arg1","rel","conf"]].set_index("id",inplace=False)
         predrels = predrels.sort_values(by='conf',ascending=False)
-        # if topK != None:
-        #     predrels = predrels[:topK]
     else:
         predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
 
