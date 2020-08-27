@@ -1,6 +1,7 @@
 *__pycache__
 *.pyc
 **/data/*
+!scripts/data/*
 **/models/*
 **/results/*
 pretrained/*
@@ -136,3 +137,4 @@ cached/2396215478/params.json
 mech/config.json
 mech/stderr.log
 mech/stdout.log
+**/cache/*
