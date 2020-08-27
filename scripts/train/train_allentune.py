@@ -101,7 +101,7 @@ if __name__ == '__main__':
     search_space = args.search_space
     
     os.environ['experiment_name'] = str(experiment_name)
-    
+
     cachedir = data_root/"cached"
     print(serial_dir)
     ie_train_data_path = data_root/"train.json"
@@ -122,12 +122,11 @@ if __name__ == '__main__':
         os.environ['ie_dev_data_path'] = str(ie_dev_data_path)
 
     if args.gpu_count > 0:
-        os.environ['CUDA_DEVICE'] = ",".join([str(i) for i in range(args.gpu_count)])
-        os.environ['cuda_device'] = ",".join([str(i) for i in range(args.gpu_count)])
+        os.environ['CUDA_VISIBLE_DEVICES'] = ",".join([str(i) for i in range(args.gpu_count)])
+        os.environ['cuda_devices'] = ",".join([str(i) for i in range(args.gpu_count)])
         os.environ['master_port'] = '2323'
-    
+
     allennlp_command = [
-            "CUDA_VISIBLE_DEVICES=0,1,2,3",
             "allentune",
             "search",
             "--experiment-name",
