@@ -82,7 +82,10 @@ def span_matching(span1,span2,metric,thresh=None):
         if root1[0] == root2[0]:
             return True
     elif metric =="rouge":
-        raise NotImplementedError
+        scores = rouge.get_scores(span1, span2)
+        # import pdb; pdb.set_trace()
+        if scores[0]['rouge-l']['f'] > thresh:
+            return True
     elif metric == "exact":
         return exact_match(span1, span2)
     return match
@@ -263,29 +266,19 @@ def find_transivity_relations(rels):
 
     return rels
 
-def annotation_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=False):
-    # import pdb; pdb.set_trace()
-    goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
-    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
-    # import pdb; pdb.set_trace()
-    if coref != None:
-        corefrels = coref.set_index("id")
-    #only get rel for our model / gold, otherwise assume one collapsed label
-
-    predrels = relations[["id","arg0","arg1","rel","text"]].set_index("id",inplace=False)
-
-    if transivity:
-        goldrels_trans = find_transivity_relations(goldrels)
-        predrels_trans = find_transivity_relations(predrels) 
-
+def diff(relations, golddf,collapse=True): #evaluated with exact match 
     good_preds = []
     seen_pred_gold = {}
+    seen_pred = {}
+    seen_gold = {}
+    goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
+    predrels = relations[["id","arg0","arg1","rel","text"]].set_index("id",inplace=False)
+    # import pdb; pdb.set_trace()
     for i in predrels.index.unique():
-        if i in goldrels_trans.index.unique():
-            gold = goldrels_trans.loc[i]
-            coref_rels = None
-            if coref != None:
-                coref_rels = corefrels.loc[i]
+
+        if i in goldrels.index.unique():
+            gold = goldrels.loc[i]
             if type(predrels.loc[i]) == pd.core.series.Series:
                 preds = [predrels.loc[i].values]
             else:
@@ -296,22 +289,76 @@ def annotation_eval(relations, golddf, coref=None, collapse = False, match_metri
                     labels = [1,1]
                 else:
                     labels = [pair[0][2],pair[1][2]]
-                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels)
-                #changing this so that it can check all the coref matches of args.if m and
-                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
-                    
+
+                m = relation_matching(pair,metric="exact", labels = labels, coref_rels=None)
+                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold)\
+                        and ((i,pair[0][0],pair[0][1]) not in seen_gold)\
+                            and ((i,pair[1][0],pair[1][1]) not in seen_pred):    
                     good_preds.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
-    
+                    seen_pred[(i,pair[1][0],pair[1][1])]=1
+                    seen_gold[(i,pair[0][0],pair[0][1])]=1
+
 
     common_count = 0.0
-    df1 = pd.DataFrame(goldrels_trans,columns=['text'])
+    df1 = pd.DataFrame(goldrels,columns=['text'])
     df2 = pd.DataFrame(predrels,columns=['text'])
-  
+
     gold_text = [x[1]['text'] for x in df1.iterrows()]
     pred_text = [x[1]['text'] for x in df2.iterrows()]
-    
-      
+        
+    for text in gold_text:
+        if text in pred_text:
+          common_count += 1.0
+
+    corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
+    corr_pred = corr_pred.drop_duplicates()
+    accuracy  = float(corr_pred.shape[0]/common_count)
+    print("agreement is :" + str(accuracy))
+
+
+
+###############################################################################################
+def annotation_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=False):
+    goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
+    predrels = relations[["id","arg0","arg1","rel","text"]].set_index("id",inplace=False)
+
+    good_preds = []
+    seen_pred_gold = {}
+    seen_gold = {}
+    seen_pred = {}
+    for i in predrels.index.unique():
+        if i in goldrels.index.unique():
+            gold = goldrels.loc[i]
+            if type(predrels.loc[i]) == pd.core.series.Series:
+                preds = [predrels.loc[i].values]
+            else:
+                preds = predrels.loc[i].values
+            c = list(itertools.product(gold.values, preds))
+            
+            for pair in c:
+                if collapse:
+                    labels = [1,1]
+                else:
+                    labels = [pair[0][2],pair[1][2]]
+
+                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=None)
+                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold)\
+                        and ((i,pair[0][0],pair[0][1]) not in seen_gold)\
+                            and ((i,pair[1][0],pair[1][1]) not in seen_pred):    
+                    good_preds.append([i,pair[0][0],pair[0][1]])
+                    seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
+                    seen_pred[(i,pair[1][0],pair[1][1])]=1
+                    seen_gold[(i,pair[0][0],pair[0][1])]=1
+
+    common_count = 0.0
+    df1 = pd.DataFrame(goldrels,columns=['text'])
+    df2 = pd.DataFrame(predrels,columns=['text'])
+
+    gold_text = [x[1]['text'] for x in df1.iterrows()]
+    pred_text = [x[1]['text'] for x in df2.iterrows()]
+        
     for text in gold_text:
         if text in pred_text:
           common_count += 1.0
@@ -321,15 +368,11 @@ def annotation_eval(relations, golddf, coref=None, collapse = False, match_metri
 
     if common_count == 0:
         return 0
-    # common = df1.merge(df2, how='inner', indicator=False)
-    # common.dropna(inplace=True)
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
     corr_pred = corr_pred.drop_duplicates()
-    # import pdb; pdb.set_trace()
-    # if common.shape[0] == 0:
-    #     return 0
     return 2*float(corr_pred.shape[0]/common_count)
 
+###########################################################################################################
 def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5):
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")

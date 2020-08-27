@@ -77,13 +77,13 @@ if __name__ == '__main__':
         os.environ['cuda_device'] = args.device
 
     if args.mech_effect_mode == True:
-        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_madeline' / 'mapped' / 'mech_effect' 
+        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_s_final' / 'mapped' / 'mech_effect' 
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo  / 'mapped' / 'mech_effect'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect'
 
 
     if args.mech_effect_mode == False:
-        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_madeline' / 'mapped' / 'mech'
+        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_s_final' / 'mapped' / 'mech'
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo  / 'mapped' / 'mech'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech'
 

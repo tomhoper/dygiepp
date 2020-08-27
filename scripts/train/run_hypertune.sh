@@ -19,3 +19,4 @@ fi
 
 
 # sh scripts/train/run_hypertune.sh /data/aida/covid_clean/ covid_anno_par_madeline,scierc 3 mech_effect 4 64 --covid_dev_only covid_dev covid_anno_par_madeline
+# python scripts/train/train_allentune.py --root /home/aida/covid_data/ --data_combo covid_anno_par_madeline --mech_effect_mode --gpu_count 1 --cpu_count 1 --num_samples 1
