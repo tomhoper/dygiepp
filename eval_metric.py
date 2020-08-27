@@ -10,6 +10,7 @@ from eval_utils import depparse_base, allpairs_base, get_openie_predictor,get_sr
 import pathlib
 from pathlib import Path
 import pandas as pd
+from tabulate import tabulate
 """
 Usage:
 python eval_metric.py --root ../coviddata --data_combo scierc_chemprot_srl 
@@ -45,12 +46,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
-        gold_path = pathlib.Path(args.root) / 'gold_final' /  'mech_effect' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_s_final' /  'mech_effect' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
-        gold_path = pathlib.Path(args.root) / 'gold_final' /  'mech' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_s_final' /  'mech' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
@@ -81,7 +82,7 @@ if __name__ == '__main__':
     # prediction_dict["allpairsnnp"] = pd.DataFrame(allpairs_relations,columns=["id","arg0","arg1"])
 
 
-    #get SRL relations and openIE relations, place in prediction_dict
+    # get SRL relations and openIE relations, place in prediction_dict
     # predictor_ie = get_openie_predictor()
     # predictor_srl = get_srl_predictor()
     # srl_relations = allenlp_base_relations(predictor_srl,golddf)
@@ -103,36 +104,43 @@ if __name__ == '__main__':
             collapse_opt = [True]
         else:
             collapse_opt = [False,True]
-        for match_metric in ["jaccard","substring","exact"]:
-            for collapse in collapse_opt:
-                th_opts = [1]
-                if match_metric == 'jaccard':
-                    th_opts = [0.3, 0.4, 0.5]
-                for th in th_opts:
+        for match_metric in ["jaccard","substring", "rouge","exact"]:
+        # for match_metric in ["rouge"]:
+            for consider_reverse in [False, True]:
+        # for match_metric in ["substring"]:
+                for collapse in collapse_opt:
+                    th_opts = [1]
+                    if match_metric == "rouge":
+                        th_opts=[0.5]
+                    if match_metric == 'jaccard':
+                        th_opts = [0.3, 0.5]
+                    for th in th_opts:
 
-                    k_th = [100, 150, 200]
-                    p_at_k = []
-                    for topK in k_th:
-                        _, p, _, _ = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK)
-                        p_at_k.append(p)
-                    if match_metric == "substring" and collapse == False:
-                        print("hereeee")
-                        errors = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
-                    if match_metric == "substring" and collapse == True:
-                        print("hereeee")
-                        errors_collapse = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
-                    
-                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
-                    span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
-                    res = [k, precision, recall, F1, p_at_k[0],p_at_k[1],p_at_k[2] , mech_effect, collapse, match_metric, th]
-                    res_span = [k, span_precision, span_recall, span_F1, match_metric, th]
-                    res_list.append(res)
-                    res_span_list.append(res_span)
-                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5} P@{12}: {6} P@{13}: {7} P@{14}: {8} span_presicion: {9} span_recall: {10} span_F1: {11}'.format(k, collapse, match_metric, precision,recall, F1, p_at_k[0],p_at_k[1],p_at_k[2], span_precision,span_recall, span_F1, k_th[0], k_th[1], k_th[2]))
+                        p_at_k = []
+                        k_th = [100, 150, 200]
+                        # p_at_k = [100, 150, 200]
+                        for topK in k_th:
+                            _, p, _, _ = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK,consider_reverse=consider_reverse)
+                            p_at_k.append(p)
+                        # if match_metric == "substring" and collapse == False:
+                        #     print("hereeee")
+                        #     errors = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
+                        # if match_metric == "substring" and collapse == True:
+                            # print("hereeee")
+                            # errors_collapse = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
+                        
+                        corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=consider_reverse)
+                        span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
+                        res = [k, round(precision,2), round(recall,2), round(F1,2), round(p_at_k[0],2),round(p_at_k[1],2),round(p_at_k[2],2) , mech_effect, collapse, match_metric, th, consider_reverse]
+                        res_span = [k, span_precision, span_recall, span_F1, match_metric, th]
+                        res_list.append(res)
+                        res_span_list.append(res_span)
+                        # print('model: {0} collapsed: {1} metric: {2} accept_reverse: {15} precision:{3} recall {4} f1: {5} P@{12}: {6} P@{13}: {7} P@{14}: {8} span_presicion: {9} span_recall: {10} span_F1: {11}'.format(k, collapse, match_metric, round(precision,2) ,round(recall,2), round(F1,2), round(p_at_k[0],2),round(p_at_k[1],2),round(p_at_k[2],2), round(span_precision,2),round(span_recall,2), round(span_F1,2), k_th[0], k_th[1], k_th[2], consider_reverse))
 
-        print ("****")
-
-    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","mech_effect_mode","collapse","match_mettric","threshold"])
+       
+    print(tabulate(res_list, headers =["model","P","R","F1","P@100","P@150","P@200","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"]))
+    print ("****")
+    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"])
     stats_path = stat_path / 'stats.tsv'
     stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
 

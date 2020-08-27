@@ -22,14 +22,14 @@ if __name__ == '__main__':
 
     parser.add_argument('--config',
                         type=str,
-                        default="./training_config/scierc_lightweight.jsonnet",
+                        default="./training_config/scierc_lightweight_allentune.jsonnet",
                         help='training config',
                         required=False)
 
     parser.add_argument('--search_space',
                         type=str,
                         default="./training_config/search_space.json",
-                        help='training config',
+                        help='training search space',
                         required=False)
  
     parser.add_argument('--data_combo',
@@ -137,7 +137,7 @@ if __name__ == '__main__':
             "--num-cpus",
             str(cpu_count),
             "--gpus-per-trial",
-            str(gpu_count),
+            str(1),
             "--cpus-per-trial",
             str(1),  
             "--search-space",
