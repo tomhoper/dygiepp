@@ -266,17 +266,19 @@ def find_transivity_relations(rels):
 
     return rels
 
-def diff(relations, golddf,collapse=True): #evaluated with exact match 
+def diff(relations, golddf,collapse=True, output_diff_path=None): #evaluated with exact match 
     good_preds = []
+    not_found =[]
     seen_pred_gold = {}
     seen_pred = {}
     seen_gold = {}
+    
     goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
-    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
-    predrels = relations[["id","arg0","arg1","rel","text"]].set_index("id",inplace=False)
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index(["id", "text"])
+    predrels = relations[["id","arg0","arg1","rel","text"]].set_index(["id", "text"],inplace=False)
+
     # import pdb; pdb.set_trace()
     for i in predrels.index.unique():
-
         if i in goldrels.index.unique():
             gold = goldrels.loc[i]
             if type(predrels.loc[i]) == pd.core.series.Series:
@@ -299,23 +301,37 @@ def diff(relations, golddf,collapse=True): #evaluated with exact match
                     seen_pred[(i,pair[1][0],pair[1][1])]=1
                     seen_gold[(i,pair[0][0],pair[0][1])]=1
 
+            seen_rels = []
+            for pair in c:
+                if (pair[0][0],pair[0][1]) not in seen_rels and (pair[0][0],pair[0][1]) not in seen_gold:
+                    not_found.append([i[0], i[1], "", "", "", pair[0][0],pair[0][1], pair[0][2]])
+                    seen_rels.append((pair[0][0],pair[0][1]))
+            for pair in c:
+                if (pair[1][0],pair[1][1]) not in seen_pred and (pair[1][0],pair[1][1]) not in seen_rels:
+                    not_found.append([i[0], i[1], pair[1][0],pair[1][1], pair[1][2], "", "", ""])
+                    seen_rels.append((pair[1][0],pair[1][1]))
+            
+
+    wrong_preds = pd.DataFrame(not_found,columns=["docid","text","arg0_pred","arg1_pred", "pred_label" ,"arg0_gold","arg1_gold", "gold_label"])
+    
 
     common_count = 0.0
     df1 = pd.DataFrame(goldrels,columns=['text'])
     df2 = pd.DataFrame(predrels,columns=['text'])
 
-    gold_text = [x[1]['text'] for x in df1.iterrows()]
-    pred_text = [x[1]['text'] for x in df2.iterrows()]
+    gold_text = [x[0][1] for x in df1.iterrows()]
+    pred_text = [x[0][1] for x in df2.iterrows()]
         
     for text in gold_text:
         if text in pred_text:
           common_count += 1.0
-
+    # import pdb; pdb.set_trace()
     corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
     corr_pred = corr_pred.drop_duplicates()
     accuracy  = float(corr_pred.shape[0]/common_count)
-    print("agreement is :" + str(accuracy))
-
+    print("for case collase {0} agreement is : {1}".format(collapse, round(accuracy,2)))
+    if output_diff_path != None:
+        wrong_preds.to_csv(output_diff_path,header=True,index=False, sep="\t")
 
 
 ###############################################################################################
@@ -437,6 +453,74 @@ def ie_span_eval(relations, golddf, match_metric="substring", jaccard_thresh=0.5
 
     return corr_pred, precision,recall, F1
 
+def ie_eval_agreement(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None, consider_reverse=False):
+    # difference here is that the gold has some relations that are not in pred. so we should remove those 
+    goldrels = golddf[["id","arg0","arg1","rel","text"]]#.drop_duplicates()
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index(["id", "text"])
+    predrels = relations[["id","arg0","arg1","rel","text"]].set_index(["id", "text"],inplace=False)
+
+    gold_count = 0
+    pred_count = 0
+
+    good_preds = []
+    found_from_gold = []
+    seen_pred_gold = {}
+    if topK == None:
+        topK = len(predrels)
+    
+    predrels = predrels[:topK]
+    for i in predrels.index.unique():
+        if i in goldrels.index.unique():
+            gold = goldrels.loc[[i]]
+            if type(predrels.loc[i]) == pd.core.series.Series:
+                preds = [predrels.loc[i].values]
+            else:
+                preds = predrels.loc[i].values
+
+            gold_count += gold.shape[0]
+            # import pdb; pdb.set_trace()
+            try:
+                pred_count += preds.shape[0]
+            except:
+                pred_count += preds[0].shape[0]
+
+            c = list(itertools.product(gold.values, preds))
+            for pair in c:
+                if collapse:
+                    labels = [1,1]
+                else:
+                    # import pdb; pdb.set_trace()
+                    labels = [pair[0][2],pair[1][2]]
+                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=None,consider_reverse=consider_reverse)
+                #changing this so that it can check all the coref matches of args.if m and
+                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
+                    if [i,pair[1][0],pair[1][1]] not in good_preds:
+                        good_preds.append([i,pair[1][0],pair[1][1]])
+                    if [i,pair[0][0],pair[0][1]] not in found_from_gold:
+                        found_from_gold.append([i,pair[0][0],pair[0][1]])
+                    seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
+    
+    corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","arg1_gold"])
+    corr_gold = pd.DataFrame(found_from_gold,columns=["docid","arg0_gold","arg1_gold"])
+    corr_pred = corr_pred.drop_duplicates()
+    corr_gold = corr_gold.drop_duplicates()
+    
+    
+    TP = corr_pred.shape[0]
+    TP_for_recal = corr_gold.shape[0]
+    FP = pred_count - TP
+    FN = gold_count - TP_for_recal
+
+    precision = TP/(TP+FP)
+    recall = TP_for_recal/(FN+TP_for_recal)
+
+    if recall==0 and precision == 0:
+        F1 = 0
+    else:
+        F1 = 2*(precision * recall) / (precision + recall)
+
+    return corr_pred, precision,recall, F1
+
 def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None, consider_reverse=False):
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
@@ -451,7 +535,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
         # if topK != None:
         #     predrels = predrels[:topK]
     else:
-        predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
+        predrels = relations[["id","arg0","arg1","rel"]].set_index("id",inplace=False)
 
     
     if transivity:
@@ -480,6 +564,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                 if collapse:
                     labels = [1,1]
                 else:
+                    # import pdb; pdb.set_trace()
                     labels = [pair[0][2],pair[1][2]]
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
                 #changing this so that it can check all the coref matches of args.if m and

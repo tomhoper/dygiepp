@@ -45,13 +45,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
-        gold_path = pathlib.Path(args.root) / 'gold_sentences' /  'mech_effect' / 'gold_par.tsv'
-        pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' 
+        gold_path = pathlib.Path(args.root) / 'gold_dev_sentences' /  'mech_effect' / 'gold_par.tsv'
+        pred_dir = pathlib.Path(args.root) / 'predictions_dev' / args.data_combo / 'mapped' / 'mech_effect' 
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
-        gold_path = pathlib.Path(args.root) / 'gold_sentences' /  'mech' / 'gold_par.tsv'
-        pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' 
+        gold_path = pathlib.Path(args.root) / 'gold_dev_sentences' /  'mech' / 'gold_par.tsv'
+        pred_dir = pathlib.Path(args.root) / 'predictions_dev' / args.data_combo / 'mapped' / 'mech' 
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
 
@@ -61,8 +61,7 @@ if __name__ == '__main__':
 
     for file in os.listdir(str(pred_dir)):
 
-      if file.startswith("run_19") and "2020-08-25" not in file:
-        print(file)
+      if file.startswith("run") and "2020-08-25" not in file:
         run_stat_path = stat_path / file
         run_stat_path.mkdir(parents=True, exist_ok=True)
 
