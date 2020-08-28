@@ -2,6 +2,9 @@
   local DROPOUT = std.parseJson(std.extVar("DROPOUT")),
   local LEARNING_RATE = std.parseJson(std.extVar("LEARNING_RATE")),
   local HIDDEN_SIZE = std.parseInt(std.extVar("HIDDEN_SIZE")),
+  local CUDA_VISIBLE_DEVICES = std.extVar("CUDA_VISIBLE_DEVICES"),
+  local master_port = std.parseInt(std.extVar("master_port")),
+
   DyGIE: {
     local dygie = self,
 
@@ -114,9 +117,13 @@
       batch_size: 1,
     },
 
+
+    distributed: {
+      "cuda_devices": [std.parseInt(x) for x in std.split(CUDA_VISIBLE_DEVICES, ",")],
+      "master_port": std.parseInt(std.extVar("master_port"))
+    },
     trainer: {
-      "distributed": false,
-      "cuda_device": 0,
+      "distributed": True,
 
       checkpointer: {
         num_serialized_models_to_keep: 3,

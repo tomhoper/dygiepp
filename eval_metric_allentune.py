@@ -45,12 +45,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
-        gold_path = pathlib.Path(args.root) / 'gold_madeline' /  'mech_effect' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_sentences' /  'mech_effect' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' 
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
-        gold_path = pathlib.Path(args.root) / 'gold_madeline' /  'mech' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / 'gold_sentences' /  'mech' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' 
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
@@ -60,7 +60,9 @@ if __name__ == '__main__':
     golddf = golddf[golddf["y"]=="accept"]
 
     for file in os.listdir(str(pred_dir)):
-      if file.startswith("run"):
+
+      if file.startswith("run_19") and "2020-08-25" not in file:
+        print(file)
         run_stat_path = stat_path / file
         run_stat_path.mkdir(parents=True, exist_ok=True)
 
@@ -81,33 +83,36 @@ if __name__ == '__main__':
         res_list = []
         
         for k,v in prediction_dict.items():
-            print ("****")
-            if not len(v):
-                print(k," -- NO PREDICTIONS -- ")
-                continue
-            #only try non-collapsed labels for relations that have it (i.e. ours and gold)
-            if "rel" not in v.columns:
-                collapse_opt = [True]
-            else:
-                collapse_opt = [False,True]
-            for match_metric in ["jaccard","substring"]:
-                for collapse in collapse_opt:
+            print(k)
+            try:
+                print ("****")
+                if not len(v):
+                    print(k," -- NO PREDICTIONS -- ")
+                    continue
+                #only try non-collapsed labels for relations that have it (i.e. ours and gold)
+                if "rel" not in v.columns:
+                    collapse_opt = [True]
+                else:
+                    collapse_opt = [False,True]
+                for match_metric in ["jaccard","substring"]:
+                    for collapse in collapse_opt:
 
-                    corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
-                    res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.5]
-                    res_list.append(res)
-                    print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
-                    if match_metric == "jaccard":
-                        corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.4)
-                        res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.4]
+                        corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
+                        res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.5]
                         res_list.append(res)
                         print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
-                        corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3)
-                        res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.3]
-                        res_list.append(res)
-                        print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
+                        if match_metric == "jaccard":
+                            corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.4)
+                            res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.4]
+                            res_list.append(res)
+                            print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
+                            corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3)
+                            res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.3]
+                            res_list.append(res)
+                            print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
 
-
+            except:
+                print(k)
             print ("****")
 
         stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","mech_effect_mode","collapse","match_mettric","threshold"])

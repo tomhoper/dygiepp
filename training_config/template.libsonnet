@@ -1,6 +1,8 @@
 {
   DyGIE: {
     local dygie = self,
+    local CUDA_VISIBLE_DEVICES = std.extVar("CUDA_VISIBLE_DEVICES"),
+    local master_port = std.parseInt(std.extVar("master_port")),
 
     // Mapping from target task to the metric used to assess performance on that task.
     local validation_metrics = {
@@ -40,7 +42,7 @@
     numpy_seed: 1337,
     pytorch_seed: 133,
     dataset_reader: {
-      type: 'dygie',
+      type: 'dygie.data.dataset_readers.dygie.DyGIEReader',
       token_indexers: {
         bert: {
           type: 'pretrained_transformer_mismatched',
@@ -111,7 +113,7 @@
       batch_size: 1,
     },
     distributed: {
-      "cuda_devices": [std.parseInt(x) for x in std.split(std.extVar("cuda_device"), ",")],
+      "cuda_devices": [std.parseInt(x) for x in std.split(CUDA_VISIBLE_DEVICES, ",")],
       "master_port": std.parseInt(std.extVar("master_port"))
     },
     trainer: {
