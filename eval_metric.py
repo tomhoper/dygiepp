@@ -131,14 +131,14 @@ if __name__ == '__main__':
                         
                         corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=consider_reverse)
                         span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
-                        res = [k, round(precision,2), round(recall,2), round(F1,2), round(p_at_k[0],2),round(p_at_k[1],2),round(p_at_k[2],2) , mech_effect, collapse, match_metric, th, consider_reverse]
+                        res = [k, round(precision,2), round(recall,2), round(F1,2), round(p_at_k[0],2),round(p_at_k[1],2),round(p_at_k[2],2), round(span_precision, 2), round(span_recall, 2), round(span_F1, 2), mech_effect, collapse, match_metric, th, consider_reverse]
                         res_span = [k, span_precision, span_recall, span_F1, match_metric, th]
                         res_list.append(res)
                         res_span_list.append(res_span)
                         # print('model: {0} collapsed: {1} metric: {2} accept_reverse: {15} precision:{3} recall {4} f1: {5} P@{12}: {6} P@{13}: {7} P@{14}: {8} span_presicion: {9} span_recall: {10} span_F1: {11}'.format(k, collapse, match_metric, round(precision,2) ,round(recall,2), round(F1,2), round(p_at_k[0],2),round(p_at_k[1],2),round(p_at_k[2],2), round(span_precision,2),round(span_recall,2), round(span_F1,2), k_th[0], k_th[1], k_th[2], consider_reverse))
 
        
-    print(tabulate(res_list, headers =["model","P","R","F1","P@100","P@150","P@200","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"]))
+    print(tabulate(res_list, headers =["model","P","R","F1","P@100","P@150","P@200","span_P","span_R","span_F1","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"]))
     print ("****")
     stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"])
     stats_path = stat_path / 'stats.tsv'
