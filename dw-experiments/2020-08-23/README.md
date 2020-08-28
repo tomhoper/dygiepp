@@ -1,3 +1,13 @@
+## Description
+
+Train models on either:
+- The gold data alone, or
+- The gold data, plus weakly-supervised Spike annotations.
+
+For the spike annotations, we down-weight the samples so they don't swamp the gold data. I try weights of 10^0 (no down-weighting), 10^-2, and 10^-4.
+
+We examine performance on the gold dev set.
+
 ## Data
 
 - `raw`: Raw data, copied over from elsewhere.
@@ -8,6 +18,7 @@
   - Remove `section` from the covid data.
   - Remove the NER annotations from the spike data.
   - Throw out spike entries that have empty strings in them after tokenizing (by whitespace splitting). This discards 160 / 14,766 examples.
+  - Also throw out Spike entries with tokens not in the BERT vocab; these break things. Only discards a handful of examples.
 - `collated`: Collate the data for faster training.
 - `processed`: Add loss weights. Weights are always 1 for covid annotations. There are 4 train datasets:
   - `train.json`: Covid, no spike.
@@ -17,3 +28,7 @@
 
 
 ## Scripts
+
+- `01_merge_spike.py`: Merges in the spike data with the gold data, cleans up, and collates into GPU-sized batches.
+- `02_run_evaluation.py`: Evaluate model performance on dev set (test set has no labels). Results go in `results/metrics`..
+- `03_merge_metrics.py`: Merge dev set results together. Results go in `results/dev-metrics.tsv`.
