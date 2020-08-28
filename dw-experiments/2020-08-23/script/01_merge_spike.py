@@ -5,7 +5,11 @@ Merge in the spike annotations with Aida's data. Use a variety of different weig
 
 import json
 import os
-from subprocess import run
+import subprocess
+import torch
+from tqdm import tqdm
+
+from allennlp.data import token_indexers, fields, Vocabulary, Token
 
 # Set this to point to the root of the DyGIE project.
 DYGIE_PATH = "/data/dwadden/proj/dygie/dygiepp-new"
@@ -21,9 +25,64 @@ def save_jsonl(xs, fname):
             print(json.dumps(x), file=f)
 
 
+def filter_empty_strings(data):
+    "Remove entries that have empty strings in them."
+    cleaned_data = []
+
+    for entry in data:
+        # Throw out entries with empty strings.
+        keep = True
+        for sent in entry["sentences"]:
+            keep &= all([tok != "" for tok in sent])
+
+        if keep:
+            cleaned_data.append(entry)
+
+    discarded = len(data) - len(cleaned_data)
+    total = len(data)
+    if discarded:
+        print(f"Discarded {discarded} / {total} Spike entries due to empty strings.")
+
+    return cleaned_data
+
+
+def filter_breaks_tokenizer(data):
+    "Removes entries that break the tokenizer."
+    tok_indexers = {"bert": token_indexers.PretrainedTransformerMismatchedIndexer(
+        "allenai/scibert_scivocab_cased", max_length=512)}
+
+    cleaned_data = []
+
+    for entry in tqdm(data, total=len(data)):
+        vocab = Vocabulary()
+        keep = True
+        # If there are any tokens that couldn't be indexed, skip this document.
+        for sent in entry["sentences"]:
+            text_field = fields.TextField(
+                [Token(word) for word in sent], tok_indexers)
+            text_field.index(vocab)
+            token_tensor = text_field.as_tensor(text_field.get_padding_lengths())
+            if torch.any(token_tensor["bert"]["offsets"] == -1).item():
+                keep = False
+        # If we didn't find any bad ones, then keep this entry.
+        if keep:
+            cleaned_data.append(entry)
+
+    discarded = len(data) - len(cleaned_data)
+    total = len(data)
+
+    if discarded:
+        print(f"Discarded {discarded} / {total} Spike entries due to un-indexable tokens.")
+
+    return cleaned_data
+
+
 def cleanup():
     """
-    Do some initial cleanup. Rename / throw out fields and split spike tokens.
+    Do some initial cleanup.
+    - Rename / throw out fields and split spike tokens.
+    - Throw out the cases where sentences have empty tokens.
+    - Throw out the cases where there's any token that messes up SciBERT.
     """
     in_dir = "data/raw"
     out_dir = "data/cleanup"
@@ -65,7 +124,10 @@ def cleanup():
             assert len(new_sents) == 1
             entry["sentences"] = new_sents
 
-        save_jsonl(data, f"{spike_out_dir}/{fold}.jsonl")
+        # Filter out data that has sentences with empty strings.
+        cleaned_data = filter_breaks_tokenizer(filter_empty_strings(data))
+
+        save_jsonl(cleaned_data, f"{spike_out_dir}/{fold}.jsonl")
 
 
 def collate():
@@ -74,22 +136,22 @@ def collate():
     """
     os.makedirs("data/collated/covid", exist_ok=True)
     # Collate COVID data.
-    cmd = ["python", f"{DYGIE_PATH}/scripts/data/collate.py",
+    cmd = ["python", f"{DYGIE_PATH}/scripts/data/shared/collate.py",
            "data/cleanup/covid",
            "data/collated/covid",
            "--file_extension=json",
            "--dataset=covid"]
-    run(cmd)
+    subprocess.run(cmd)
 
     # Collate
     os.makedirs("data/collated/spike", exist_ok=True)
-    cmd = ["python", f"{DYGIE_PATH}/scripts/data/collate.py",
+    cmd = ["python", f"{DYGIE_PATH}/scripts/data/shared/collate.py",
            "data/cleanup/spike",
            "data/collated/spike",
            "--dev_name=skip",
            "--test_name=skip",
            "--dataset=covid"]  # We want the spike data to the covid label namespace.
-    run(cmd)
+    subprocess.run(cmd)
 
 
 def make_weighted_train_data(spike_exponent):

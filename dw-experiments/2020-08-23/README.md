@@ -7,6 +7,7 @@
 - `cleanup`
   - Remove `section` from the covid data.
   - Remove the NER annotations from the spike data.
+  - Throw out spike entries that have empty strings in them after tokenizing (by whitespace splitting). This discards 160 / 14,766 examples.
 - `collated`: Collate the data for faster training.
 - `processed`: Add loss weights. Weights are always 1 for covid annotations. There are 4 train datasets:
   - `train.json`: Covid, no spike.
