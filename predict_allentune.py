@@ -26,9 +26,11 @@ def get_doc_key_info(ds):
     for sent in doc:
       sent_text = " ".join(sent.text)
       for rel in sent.relations:
-        arg0 = " ".join(rel.pair[0].text)
-        arg1 = " ".join(rel.pair[1].text)
+        arg0 = " ".join(rel.pair[0].text).replace("\"", "")
+        arg1 = " ".join(rel.pair[1].text).replace("\"", "")
         data_key = (doc_key, sent_text, arg0, arg1, rel.label)
+        # print((doc_key, sent_text, arg0, arg1, rel.label))
+        # import pdb;pdb.set_trace()
         doc_info_conf_iter[data_key] = rel.score
   return doc_info_conf_iter
 
@@ -77,18 +79,26 @@ if __name__ == '__main__':
         os.environ['cuda_device'] = args.device
 
     if args.mech_effect_mode == True:
-        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_madeline' / 'mapped' / 'mech_effect' 
+        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_sentences' / 'mapped' / 'mech_effect' 
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech_effect'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect'
 
 
     if args.mech_effect_mode == False:
-        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_madeline' / 'mapped' / 'mech'
+        test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_sentences' / 'mapped' / 'mech'
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech'
 
     test_dir = pathlib.Path(test_dir) /'test.json'
+    run_checkpoint = False
     for file in os.listdir(str(serial_dir)):
+      
+      if not file.startswith("run_19") or "2020-08-25" in file :
+        # run_checkpoint= True
+        continue
+      # if run_checkpoint == False:
+        # continue
+      print(file)
       if file.startswith("run"):
         run_serial_dir = serial_dir / file / "trial"
         run_pred_dir = pred_dir / file 
@@ -114,7 +124,12 @@ if __name__ == '__main__':
                   "--cuda-device",
                   args.device
           ]
-
+        print(" ".join(allennlp_command))
         subprocess.run(" ".join(allennlp_command), shell=True, check=True)
         ds = Dataset(pred_path)
         prediction_to_tsv(ds, pathlib.Path(run_pred_dir) / "pred.tsv")
+
+
+
+
+
