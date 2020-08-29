@@ -10,6 +10,7 @@ def find_cross_sentence_rel_stats(input_filepath): #the input_file is the origin
         total_relation_count += len(doc["relations"])
         for rel in doc["relations"]:
             head = doc['text'][rel['head_span']["start"]:rel['head_span']["end"]]
+            
             child = doc['text'][rel['child_span']["start"]:rel['child_span']["end"]]
             not_seen_in_same_sentence = True
             for sent in sentences:
@@ -22,7 +23,7 @@ def find_cross_sentence_rel_stats(input_filepath): #the input_file is the origin
 
 
 def create_sentence_level_relations_tsv(input_filepath):
-    output_tsv_file = open("sentence_level_final.tsv", "w")
+    output_tsv_file = open("sentence_level_complete.tsv", "w")
     docs = [json.loads(line) for line in open(input_filepath)]
     for doc in docs:
         text = doc["text"]
@@ -38,10 +39,21 @@ def create_sentence_level_relations_tsv(input_filepath):
             child = doc['text'][rel['child_span']["start"]:rel['child_span']["end"]]
             relation_label = rel['label']
 
-            not_seen_in_same_sentence = True
+            if len(text)-1 > rel['head_span']["end"] and (text[rel['head_span']["end"]]) != " ":
+              end_index = text.index(" ", rel['head_span']['end'])
+              head = text[rel['head_span']['start']:end_index]
+              if head[len(head)-1] == '.' or head[len(head)-1] == '?' or head[len(head)-1] == '!':
+                head = head[:-1]
+
+            if len(text)-1 > rel['child_span']["end"] and (text[rel['child_span']["end"]]) != " ":
+              end_index = text.index(" ", rel['child_span']['end'])
+              child = text[rel['child_span']['start']:end_index]
+              if child[len(child)-1] == '.' or child[len(child)-1] == '?' or child[len(child)-1] == '!':
+                child = child[:-1]
+
             for sent in sentences:
               if head in sent and child in sent:
                 output_tsv_file.write(doc_key + '\t' + sent + '\t' + head + '\t' + child + '\t' + relation_label + '\taccept\t' + annotator_name + '\n')
                 
                 
-create_sentence_level_relations_tsv("no_need_to_correct.jsonl")
+create_sentence_level_relations_tsv("tom_output_total.jsonl")

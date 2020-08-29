@@ -50,7 +50,7 @@ def tokenize(sent):
             res.append(tokens)
         # Otherwise, just split it into chunks of 100.
         else:
-            import pdb; pdb.set_trace()
+            
             while tokens:
                 res.append(tokens[:500])
                 tokens = tokens[500:]
@@ -70,7 +70,7 @@ def process_paragraph(paragraph):
 
 
 def process_abstract_metadata_file(abstract, paper_id):
-    sents = process_paragraph(abstract)
+    sents = process_paragraph(abstract.replace("  ", " "))
     return dict(doc_key=f"{paper_id}_abstract",
                 section="Abstract",
                 sentences=sents)
@@ -87,11 +87,14 @@ def find_index(sentence, arg_parts):
         ind_seen = count
         for k in range(len(arg_parts)):
             if i + k < len(sentence) and arg_parts[k] != sentence[i + k]:
-                arg_seen = False
-                ind_seen = -1
+                if sentence[i + k].endswith('.') and arg_parts[k] != sentence[i + k][:len(sentence[i + k])-1]:
+                    arg_seen = False
+                    ind_seen = -1
         if arg_seen == True:
             break
     count += 1
+  if ind_seen == -1:
+    import pdb; pdb.set_trace()  
   return ind_seen
 
 def scierc_format(anno_list):
@@ -99,14 +102,16 @@ def scierc_format(anno_list):
     text_res['relations'] = [[]]
     text_res['ner'] = [[]]
     for annotation in anno_list:
-        arg0_parts = process_paragraph(annotation[2])[0]
-        arg1_parts = process_paragraph(annotation[3])[0]
-        # import pdb; pdb.set_trace()
+        arg0_parts = process_paragraph(annotation[2].strip())[0]
+        arg1_parts = process_paragraph(annotation[3].strip())[0]
+        # 
         ind0 = find_index(text_res['sentences'][0], arg0_parts)
         ind1 = find_index(text_res['sentences'][0], arg1_parts)
         if ind0 == -1 or ind1 == -1:
-            print("hereeee")
+            
             continue
+        
+
         text_res['ner'][0].append([ind0, ind0 + len(arg0_parts)-1, "ENTITY"])
         text_res['ner'][0].append([ind1, ind1 + len(arg1_parts)-1, "ENTITY"])
         if "used" in annotation[4].lower() or 'do' in annotation[4].lower():
@@ -115,7 +120,7 @@ def scierc_format(anno_list):
             text_res['relations'][0].append([ind0, ind0 + len(arg0_parts)-1, ind1, ind1 + len(arg1_parts)-1, "EFFECT"])
         else:
             print("bad")
-    # import pdb; pdb.set_trace()
+    # 
     return text_res
 
 def scierc_format_mech_only(anno_list):
@@ -123,13 +128,12 @@ def scierc_format_mech_only(anno_list):
     text_res['relations'] = [[]]
     text_res['ner'] = [[]]
     for annotation in anno_list:
-        arg0_parts = process_paragraph(annotation[2])[0]
-        arg1_parts = process_paragraph(annotation[3])[0]
+        arg0_parts = process_paragraph(annotation[2].strip())[0]
+        arg1_parts = process_paragraph(annotation[3].strip())[0]
 
         ind0 = find_index(text_res['sentences'][0], arg0_parts)
         ind1 = find_index(text_res['sentences'][0], arg1_parts)
         if ind0 == -1 or ind1 == -1:
-            print("hereeee")
             continue
         text_res['ner'][0].append([ind0, ind0 + len(arg0_parts)-1, "ENTITY"])
         text_res['ner'][0].append([ind1, ind1 + len(arg1_parts)-1, "ENTITY"])
@@ -152,6 +156,9 @@ def write_scierc_format_data(annotation_dict, output_file, mech_only_flag, test_
         while data["doc_key"] in seen_ids:
             data["doc_key"] = data["doc_key"] + '+'
         seen_ids.append(data["doc_key"])
+        if data['relations'] == [[]]:
+            print("empty")
+            continue
         #test data
         if test_flag == True:
             del data['relations']
@@ -180,7 +187,7 @@ def create_annotated_covid(mech_only_flag, root_path, annotated_path, test_keys,
     for line in input_file:
         line_parts = line[:-1].split("\t")
         key = (line_parts[0], line_parts[1])
-        # import pdb; pdb.set_trace()
+        # 
         if line_parts[-2] == "reject" or line_parts[-2] == "ignore":
             print("reject") 
             continue

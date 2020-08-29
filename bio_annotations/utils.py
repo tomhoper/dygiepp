@@ -9,12 +9,13 @@ import spacy
 
 NLP = spacy.load("en_core_web_sm")
 PRODIGY_FILE = "prodigy.json"
+SELF_CORRECTION_DIR_PATH = "self_corrections/"
 CORRECTION_DIR_PATH = "corrections/"
 ANNOTATION_DIR_PATH = "annotations/"
 ANNOTATION_DIR_PATH_OLD = "annotations_old/"
 CORRECTION_DIR_PATH_OLD = "corrections_old/"
 
-DEFAULT_NAME_LIST = ["madeline", "megan", "sara", "yeal", "tom"]
+DEFAULT_NAME_LIST = ["madeline", "megan", "sara", "yeal", "tom", "kristina", "jeff"]
 DEFAULT_CORRECTION_NAME_LIST = ["madeline", "megan", "sara"]
 
 def find_span_start_token_in_text(text, span):
@@ -245,9 +246,75 @@ def visualize_the_annotations_to_tsv(data_list, output_tsv_file_name):
         pruned_data.append(data)
         for i in range(len(data['relations'])):
           relations_head = text[data['relations'][i]['head_span']['start']:data['relations'][i]['head_span']['end']]
+          if len(text)-1 > data['relations'][i]['head_span']["end"] and (text[data['relations'][i]['head_span']["end"]]) != " ":
+              end_index = text.index(" ", data['relations'][i]['head_span']['end'])
+              relations_head = text[data['relations'][i]['head_span']['start']:end_index]
+              if relations_head[len(relations_head)-1] == '.' or relations_head[len(relations_head)-1] == '?' or relations_head[len(relations_head)-1] == '!':
+                relations_head = relations_head[:-1]
+
           relations_child = text[data['relations'][i]['child_span']['start']:data['relations'][i]['child_span']['end']]
+          if len(text)-1 > data['relations'][i]['child_span']["end"] and (text[data['relations'][i]['child_span']["end"]]) != " ":
+              
+              try:
+                end_index = text.index(" ", data['relations'][i]['child_span']['end'])
+              except:
+                import pdb; pdb.set_trace()
+              relations_child = text[data['relations'][i]['child_span']['start']:end_index]
+              if relations_child[len(relations_child)-1] == '.' or relations_child[len(relations_child)-1] == '?' or relations_child[len(relations_child)-1] == '!':
+                relations_child = relations_child[:-1]
+
           relation_label = data['relations'][i]['label']
-          output_tsv_file.write(doc_key + '\t' + text + '\t' + relations_head + '\t' + relations_child + '\t' + relation_label + '\taccept\t' + annotator_name + '\n')
+          output_tsv_file.write(doc_key + '\t' + text.replace("  ", " ") + '\t' + relations_head.replace("  ", " ")+ '\t' + relations_child.replace("  ", " ") + '\t' + relation_label + '\taccept\t' + annotator_name + '\n')
+    return pruned_data
+
+
+
+
+def visualize_the_annotations_to_tsv_reverse(data_list, output_tsv_file_name):
+    doc_key_list = []
+    doc_key_sent_list = []
+    output_tsv_file = open(output_tsv_file_name, 'w')
+    # output_tsv_file.write("doc_key\ttext\thead\tchild\tlabel\t\taccept_reject\n")
+    pruned_data = []
+    for j in range(len(data_list)-1, -1, -1):
+        data = data_list[j]
+        doc_key = data['meta']['doc_key']
+        answer = data['answer']
+        text = data['text']
+        annotator_name = data["annotator"]
+        if answer == "reject":
+            # output_tsv_file.write(doc_key + '\t' + text + '\t\t\t\t\treject\n')
+            continue
+        elif answer == "ignore":
+          # output_tsv_file.write(doc_key + '\t' + text + '\t\t\t\t\tignore\n')
+          continue
+        if doc_key not in doc_key_list:
+          doc_key_list.append(doc_key)
+        if (doc_key, text) in doc_key_sent_list:
+          continue
+        doc_key_sent_list.append((doc_key, text))
+        pruned_data.append(data)
+        for i in range(len(data['relations'])):
+          relations_head = text[data['relations'][i]['head_span']['start']:data['relations'][i]['head_span']['end']]
+          if len(text)-1 > data['relations'][i]['head_span']["end"] and (text[data['relations'][i]['head_span']["end"]]) != " ":
+              end_index = text.index(" ", data['relations'][i]['head_span']['end'])
+              relations_head = text[data['relations'][i]['head_span']['start']:end_index]
+              if relations_head[len(relations_head)-1] == '.' or relations_head[len(relations_head)-1] == '?' or relations_head[len(relations_head)-1] == '!':
+                relations_head = relations_head[:-1]
+
+          relations_child = text[data['relations'][i]['child_span']['start']:data['relations'][i]['child_span']['end']]
+          if len(text)-1 > data['relations'][i]['child_span']["end"] and (text[data['relations'][i]['child_span']["end"]]) != " ":
+              
+              try:
+                end_index = text.index(" ", data['relations'][i]['child_span']['end'])
+              except:
+                import pdb; pdb.set_trace()
+              relations_child = text[data['relations'][i]['child_span']['start']:end_index]
+              if relations_child[len(relations_child)-1] == '.' or relations_child[len(relations_child)-1] == '?' or relations_child[len(relations_child)-1] == '!':
+                relations_child = relations_child[:-1]
+
+          relation_label = data['relations'][i]['label']
+          output_tsv_file.write(doc_key + '\t' + text.replace("  ", " ") + '\t' + relations_head.replace("  ", " ")+ '\t' + relations_child.replace("  ", " ") + '\t' + relation_label + '\taccept\t' + annotator_name + '\n')
     return pruned_data
 
 def run_prodigy_command(data_file_name, dataset_name, port_num, label_list=["DO", "USED", "EFFECT"], entity_list=["ENTITY"]):
@@ -291,8 +358,10 @@ def write_prodigy_port(port_num):
     output_file = open(PRODIGY_FILE, "w")
     json.dump(data, output_file, indent=4)
 
-def update_extractions(name_list, annotation_path, annotations_correction="annotations"):
+def update_extractions(name_list, annotation_path, annotations_correction="annotations",dataset_suffix="_correction"):
   for name in name_list:
+    if name =="jeff" or name== "kristina":
+      continue
     db_file = "ner_rels_bio_" + name
     # if name == "sara":
     #   db_file = "ner_rels_bio_sara_v2"    
@@ -302,7 +371,7 @@ def update_extractions(name_list, annotation_path, annotations_correction="annot
     if annotations_correction == "correction":
       annotation_name = 'corrections_' + name + '.jsonl'
       annotation_output_file = pathlib.Path(annotation_path) / "jsons" 
-      db_file = db_file + "_correction"
+      db_file = db_file + dataset_suffix
       if name == "tom":
         db_file = db_file + "_NEW"
     run_prodigy_db_out(db_file, str(annotation_output_file) + '/' , annotation_name)
@@ -318,6 +387,8 @@ def merge_with_old(new_path, old_path):
         old_docs = [json.loads(line) for line in open(join(old_path, file))]
         total_docs = new_docs + old_docs
 
+        
+      else:
         total_docs = [json.loads(line) for line in open(join(old_path, file))]
 
       output_file = open(join(new_path, file), "w")
