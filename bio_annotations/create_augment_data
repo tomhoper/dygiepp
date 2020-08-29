@@ -1,0 +1,11 @@
+# This script fills in the black with coref and transivity the new dataset containing the relations will be then written to the root directory
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()  # pylint: disable=invalid-name
+
+    parser.add_argument('--root',
+                        type=Path,
+                        help='./',
+                        required=True)

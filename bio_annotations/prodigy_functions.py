@@ -327,8 +327,11 @@ if __name__ == "__main__":
                             rel-validation --> get validation for one person from other people\'s annotations in relation level\n \
                             par-validation--> get validation for one person from other people\'s annotations in relation level\n \
                             prodigy-json-by-tsv --> converts the tsv file to the prodigy formatted json \n \
+                            prodigy-json-by-tsv-rels --> converts the tsv file to the prodigy formatted json (each relastion to one input) \n \
                             all-data --> get all the dataset annotated ready \n\
+                            after-stiching-tom --> get all the data and combine them for a final jsonl/tsv for tom \n\
                             prodigy-upload --> get the port and data and runs the command to load the annotation site(please set flag for correction or validation to load those data or give the datafile directly',
+                            
                       required=True)
 
   parser.add_argument('--annotated_path',
@@ -339,7 +342,7 @@ if __name__ == "__main__":
 
   parser.add_argument('--output_data_name',
                         type=str,
-                        default="final",
+                        default="s_final",
                         help='path to final set of annotations',
                         required=False)
 
@@ -401,6 +404,51 @@ if __name__ == "__main__":
 
       ut.run_prodigy_command(input_filename, db_name, args.port)
 
+  elif args.command_type == "prodigy-json-by-tsv":
+    input_file = open(args.annotated_path)
+    key_text_pair_seen = []
+    relation_info = []
+    output_file = open(args.output_data_name, "w")
+    data_list = []
+    for line in input_file:
+        # import pdb; pdb.set_trace()
+        doc_id, text, arg0, arg1, rel, _ = line[:-1].split('\t')[:6]
+        data_list.append([doc_id, text, arg0, arg1, rel])
+    for item in data_list:
+        doc_id, text, arg0, arg1, rel = item
+        if (doc_id, text) not in key_text_pair_seen:
+          relation_info = []
+          relation_info.append((rel, arg0, arg1))
+          key_text_pair_seen.append((doc_id, text))
+          for other in data_list:
+            other_doc_id, other_text, other_arg0, other_arg1, other_rel = other
+            if item == other:
+              continue
+            if (doc_id, text) == (other_doc_id, other_text):
+              relation_info.append((other_rel, other_arg0, other_arg1))
+          res = ut.convert_to_json(text, relation_info, doc_id)
+          json.dump(res, output_file)
+          output_file.write('\n')
+
+
+  elif args.command_type == "prodigy-json-by-tsv-rels":
+    input_file = open(args.annotated_path)
+    key_text_pair_seen = []
+    relation_info = []
+    output_file = open(args.output_data_name, "w")
+    data_list = []
+    for line in input_file:
+        # import pdb; pdb.set_trace()
+        doc_id, text, arg0, arg1, rel, _ = line[:-1].split('\t')[:6]
+        data_list.append([doc_id, text, arg0, arg1, rel])
+    for item in data_list:
+        doc_id, text, arg0, arg1, rel = item
+        relation_info = []
+        relation_info.append((rel, arg0, arg1))
+        res = ut.convert_to_json(text, relation_info, doc_id)
+        json.dump(res, output_file)
+        output_file.write('\n')
+
   elif args.command_type == "par-validation":
       if args.others == "":
           print("Error: we need a list of people to validate, switching to default list of " + str(DEFAULT_LIST))
@@ -429,3 +477,90 @@ if __name__ == "__main__":
 
       dc.write_gold_file(False, args.root, args.annotated_path, test_keys, args.output_data_name)
       print('mech effect gold created')
+      dc.write_gold_file(False, args.root, args.annotated_path, dev_keys, "dev_" + args.output_data_name)
+      dc.write_gold_file(True, args.root, args.annotated_path, dev_keys, "dev_" + args.output_data_name)
+ 
+
+  elif args.command_type == "after-stiching-tom":
+      # combining the partitions that are already correct + getting data from updated stiching and combine
+      # get updated stiching dataset:
+      ut.run_prodigy_db_out("tom_stiching", "", "tom_output_stiching.jsonl")
+      stiching_docs = [json.loads(line) for line in open("tom_output_stiching.jsonl")]
+      correct_docs = [json.loads(line) for line in open("no_need_to_correct.jsonl")]
+      total_doc = stiching_docs + correct_docs
+      output_stiching_complete = open("tom_complete_after_stiching.jsonl")
+
+      for doc in total_doc:
+        json.dump(doc, output_stiching_complete)
+        
+      # output_file = open("tom_output_total.jsonl", "w")
+      # for item in total_doc:
+      #     json.dump(item, output_file)
+      #     output_file.write("\n")
+
+
+      total_doc = ut.read_data_base("tom_output_total.jsonl", annotator_name="tom")
+      correction_tsv_file = pathlib.Path(ut.CORRECTION_DIR_PATH) / "tsvs" / 'corrections_tom.tsv'
+      ut.visualize_the_annotations_to_tsv(total_doc, correction_tsv_file)
+      
+      test_keys, dev_keys = dc.get_test_indexes(correction_tsv_file)
+      # dc.create_annotated_covid(True, args.root, correction_tsv_file, test_keys, dev_keys, args.output_data_name)
+      # print('mech only data created')
+      # dc.create_annotated_covid(False, args.root, correction_tsv_file, test_keys, dev_keys, args.output_data_name)
+      # print('mech effect data created')
+      # dc.write_gold_file(True, args.root, correction_tsv_file, test_keys, args.output_data_name)
+      # print('mech only gold created')
+
+      # dc.write_gold_file(False, args.root, correction_tsv_file, test_keys, args.output_data_name)
+      # print('mech effect gold created')
+      dc.write_gold_file(False, args.root, correction_tsv_file, dev_keys, "dev_" + args.output_data_name)
+      dc.write_gold_file(True, args.root, correction_tsv_file, dev_keys, "dev_" + args.output_data_name)
+
+  elif args.command_type == "sort_data_for_stats":
+    #getting all the files that arae needed for the agreement stats
+    #first step getting all initia annotations
+    ut.update_extractions(ut.DEFAULT_NAME_LIST, ut.ANNOTATION_DIR_PATH, annotations_correction="annotations")
+    ut.update_extractions(ut.DEFAULT_CORRECTION_NAME_LIST, ut.SELF_CORRECTION_DIR_PATH, annotations_correction="correction")
+    ut.merge_with_old(ut.ANNOTATION_DIR_PATH + "jsons/", ut.ANNOTATION_DIR_PATH_OLD + 'jsons/')
+    ut.merge_with_old(ut.SELF_CORRECTION_DIR_PATH + "jsons/", ut.CORRECTION_DIR_PATH_OLD + 'jsons/')
+    for name in ut.DEFAULT_NAME_LIST:
+        annotation_name = 'annotations_' + name + '.jsonl'
+        annotation_name_tsv = 'annotations_' + name + '.tsv'
+        annotation_json_file = pathlib.Path(ut.ANNOTATION_DIR_PATH) / "jsons" / annotation_name
+        annotation_tsv_file = pathlib.Path(ut.ANNOTATION_DIR_PATH) / "tsvs" / annotation_name_tsv
+        data_list =  ut.read_data_base(str(annotation_json_file), name)
+        ut.visualize_the_annotations_to_tsv(data_list, annotation_tsv_file)
+    for name in ut.DEFAULT_CORRECTION_NAME_LIST:
+        annotation_name = 'corrections_' + name + '.jsonl'
+        annotation_name_tsv = 'corrections_' + name + '.tsv'
+        correction_json_file = pathlib.Path(ut.SELF_CORRECTION_DIR_PATH) / "jsons" / annotation_name
+        correction_tsv_file = pathlib.Path(ut.SELF_CORRECTION_DIR_PATH) / "tsvs" / annotation_name_tsv
+        data_list =  ut.read_data_base(str(correction_json_file), name)
+        ut.visualize_the_annotations_to_tsv(data_list, correction_tsv_file)
+
+    # #get toms annotations that madeline corrected. 
+    # ut.run_prodigy_db_out("ner_rels_bio_madeline_correction", 'validations/', "madeline_tom.jsonl")
+    # data_list =  ut.read_data_base("validations/"  + "madeline_tom.jsonl", "tom")
+    # ut.visualize_the_annotations_to_tsv_reverse(data_list, "validations/madeline_tom.tsv")
+    # data_list =  ut.read_data_base(""  + "validation_input_madeline.jsonl", "tom")
+
+    # ut.visualize_the_annotations_to_tsv(data_list, "validations/input_madeline_tom.tsv")
+  elif args.command_type == "madeline_temp":
+    ut.run_prodigy_db_out("ner_rels_bio_madeline_correction","", "madeline_temp.jsonl")
+    data_list =  ut.read_data_base("validations/"  + "madeline_tom.jsonl", "tom")
+    ut.visualize_the_annotations_to_tsv_reverse(data_list, "madeline_temp.tsv")
+
+    test_keys, dev_keys = dc.get_test_indexes("madeline_temp.tsv")
+    dc.create_annotated_covid(True, args.root, "madeline_temp.tsv", test_keys, dev_keys, "madeline_temp")
+    print('mech only data created')
+    dc.create_annotated_covid(False, args.root, "madeline_temp.tsv", test_keys, dev_keys, "madeline_temp")
+    print('mech effect data created')
+    dc.write_gold_file(True, args.root, "madeline_temp.tsv", test_keys, "madeline_temp")
+    print('mech only gold created')
+
+    dc.write_gold_file(False, args.root, "madeline_temp.tsv", test_keys, "madeline_temp")
+    print('mech effect gold created')
+    dc.write_gold_file(False, args.root, "madeline_temp.tsv", dev_keys, "dev_" + "madeline_temp")
+    dc.write_gold_file(True, args.root, "madeline_temp.tsv", dev_keys, "dev_" + "madeline_temp")
+
+
