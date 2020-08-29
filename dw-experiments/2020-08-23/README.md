@@ -32,4 +32,8 @@ We examine performance on the gold dev set.
 - `01_merge_spike.py`: Merges in the spike data with the gold data, cleans up, and collates into GPU-sized batches.
 - `02_run_evaluation.py`: Evaluate model performance on dev set (test set has no labels). Results go in `results/metrics`.
 - `03_merge_metrics.py`: Merge dev set results together. Results go in `results/dev-metrics.tsv`.
-- `04_predict.py`: Make predictions using all 4 models on the gold dev and test set (copied from `UnifiedData/covid_anno_par_s_final/mapped/mech_effect`). Then uncollate the results. The predictions go in `results/predictions/(collated|final)`.
+- `04_predict.py`: Make predictions using all 4 models on the gold dev and test set (copied from `UnifiedData/covid_anno_par_s_final/mapped/mech_effect`). Then uncollate the results. The predictions go in `results/predictions/(collated|final)`. The dev and test set predictions for each of the settings go in a subfolder:
+  - `no-spike`: Train on gold covid, no spike.
+  - `spike-0`: Include spike data during training, with loss weights of 10^0 (i.e. 1).
+  - `spike-2`: Include spike data during training, with loss weights of 10^-2.
+  - `spike-4`: Include spike data during training, with loss weights of 10^-2.
