@@ -212,8 +212,9 @@ def convert_to_json(text, relation_pairs, doc_key):
     relations_info["head_span"] = head_token_info
     relations_info["child_span"] = child_token_info
     if "token_end" not in head_token_info or "token_end" not in child_token_info:
-      return {}
+      
       import pdb; pdb.set_trace()
+      return {}
     relations_info["head"] = head_token_info["token_end"]
     relations_info["child"] = child_token_info["token_end"]
 

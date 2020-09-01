@@ -128,9 +128,13 @@ def correct_before_doc_removing_last_sentence(doc):
       import pdb; pdb.set_trace()
 
     while doc['text'][cutting_ind+1].isdigit() or doc['text'][cutting_ind-8:cutting_ind+1] == "D61 in E." or (len(doc['text']) > cutting_ind+3 and (doc['text'][cutting_ind-3] == '.' or doc['text'][cutting_ind+3] == '.')):
-          cutting_ind = doc['text'][:cutting_ind-1].rindex(re.findall("\?|\.|\!", doc['text'])[len(re.findall("\?|\.|\!", doc['text']))-2])
-          extra_string = doc['text'][cutting_ind+1:]
-
+      try:
+        cutting_ind = doc['text'][:cutting_ind-1].rindex(re.findall("\?|\.|\!", doc['text'])[len(re.findall("\?|\.|\!", doc['text']))-2])
+        extra_string = doc['text'][cutting_ind+1:]
+      except:
+        cutting_ind = -1
+        extra_string = doc['text']
+        break
     
     res["text"] = doc['text'][:cutting_ind+1]
     
@@ -155,7 +159,7 @@ def add_missing_parts(text, sorted_list, doc_key):
     #           import pdb; pdb.set_trace()
     new_sorted_list = []
     if sorted_list[0][0] != 0: # first partition is missing
-      part_text = text[:sorted_list[1][0]]
+      part_text = text[:sorted_list[0][0]]
       new_part = ut.convert_to_json(part_text, [], doc_key)
       new_part['answer'] = "reject"
       new_sorted_list.append([0, new_part])
@@ -205,11 +209,11 @@ def add_missing_parts(text, sorted_list, doc_key):
 
 
 
-def write_stiching_docs(metadata_path, input_file_path, id_list):
+def write_stiching_docs(metadata_path, input_file_path, id_list, stiching_file_path, correct_file_path):
     docs = [json.loads(line) for line in open(input_file_path)]
     metadata = read_metadata(metadata_path)
-    output_file = open("for_tom_to_correct.jsonl", "w")
-    correct_output_file = open("no_need_to_correct.jsonl", "w")
+    output_file = open(stiching_file_path, "w")
+    correct_output_file = open(correct_file_path, "w")
     output_docs = []
     for doc in docs:
       if doc["meta"]["doc_key"] not in id_list:
@@ -244,15 +248,16 @@ def write_stiching_docs(metadata_path, input_file_path, id_list):
                   cutting_ind_from_before = doc_before['text'].rindex(re.findall("\?|\.|\!", doc_before['text'])[len(re.findall("\?|\.|\!", doc_before['text'])) - 1])
                   extra_string_before = len(doc_before['text'][cutting_ind_from_before+1:])
 
-                  if doc_before['text'][cutting_ind_from_before+1].isdigit() or doc_before['text'][cutting_ind_from_before-8:cutting_ind_from_before+1] == "D61 in E." or (len(doc_before['text']) > cutting_ind_from_before+3 and (doc_before['text'][cutting_ind_from_before-3] == '.' or doc_before['text'][cutting_ind_from_before+3] == '.')):
-                    cutting_ind_from_before = doc_before['text'][:cutting_ind_from_before-1].rindex(re.findall("\?|\.|\!", doc_before['text'])[len(re.findall("\?|\.|\!", doc_before['text']))-2])
-                    extra_string_before = len(doc_before['text'][cutting_ind_from_before+1:])
-                    if (len(doc_before['text']) > cutting_ind_from_before+4 and doc_before['text'][cutting_ind_from_before+3] == '.'):
-                      try:
+                  while doc_before['text'][cutting_ind_from_before+1].isdigit() or doc_before['text'][cutting_ind_from_before-8:cutting_ind_from_before+1] == "D61 in E." or (len(doc_before['text']) > cutting_ind_from_before+3 and (doc_before['text'][cutting_ind_from_before-3] == '.' or doc_before['text'][cutting_ind_from_before+3] == '.')):
+                    try:
+                      cutting_ind_from_before = doc_before['text'][:cutting_ind_from_before-1].rindex(re.findall("\?|\.|\!", doc_before['text'])[len(re.findall("\?|\.|\!", doc_before['text']))-2])
+                      extra_string_before = len(doc_before['text'][cutting_ind_from_before+1:])
+                      if (len(doc_before['text']) > cutting_ind_from_before+4 and doc_before['text'][cutting_ind_from_before+3] == '.'):               
                         cutting_ind_from_before = doc_before['text'][:cutting_ind_from_before-1].rindex(re.findall("\?|\.|\!", doc_before['text'])[len(re.findall("\?|\.|\!", doc_before['text']))-3])
                         extra_string_before = len(doc_before['text'][cutting_ind_from_before+1:])
-                      except:
-                        extra_string_before = 10000
+                    except:
+                      extra_string_before = 10000
+                      break
   
                 try:
                   cutting_ind_from_next = doc_next['text'].index(re.findall("\?|\.|\!", doc_next['text'])[0])
@@ -264,9 +269,13 @@ def write_stiching_docs(metadata_path, input_file_path, id_list):
                 
                 while (cutting_ind_from_next+1 < len(doc_next['text']) and doc_next['text'][cutting_ind_from_next+1].isdigit()) or doc_next['text'][cutting_ind_from_next-8:cutting_ind_from_next+1] == "D61 in E." or (len(doc_next['text']) > cutting_ind_from_next+3 and (doc_next['text'][cutting_ind_from_next-3] == '.' or doc_next['text'][cutting_ind_from_next+3] == '.')):
                 # if doc_next['text'][cutting_ind_from_next-1:cutting_ind_from_next+2] in ["9.1","0.0"]:   #edge case
+                  try:  
                     cutting_ind_from_next = doc_next['text'].index(re.findall("\?|\.|\!", doc_next['text'])[1], cutting_ind_from_next + 1)
                     extra_string_next = len(doc_next['text'][:cutting_ind_from_next+1])
-
+                  except:
+                    extra_string_next = 5000000
+                    break
+                    # import pdb; pdb.set_trace()
 
                 
                 if extra_string_next >  extra_string_before: # it is better to move the previous partial sentence to next partition
@@ -306,7 +315,7 @@ def write_stiching_docs(metadata_path, input_file_path, id_list):
                   correct_output_file.write("\n")
 
                 
-doc_id_list = find_the_ids_with_issues("corrections/jsons/corrections_tom.jsonl")
-write_stiching_docs("metadata", "corrections/jsons/corrections_tom.jsonl", doc_id_list)
+# doc_id_list = find_the_ids_with_issues("corrections/jsons/corrections_tom.jsonl")
+# write_stiching_docs("metadata", "corrections/jsons/corrections_tom.jsonl", doc_id_list)
 
 

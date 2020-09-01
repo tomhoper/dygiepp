@@ -95,3 +95,6 @@ prodigy rel.manual tom_stiching_test blank:en ./for_tom_to_correct.jsonl --label
 prodigy rel.manual tom_event blank:en ./tom_output_total.jsonl --label USED,EFFECT,DO,TRIGGER_ARG0,TRIGGER_ARG1 --span-label ENTITY,TRIGGER
 
 
+prodigy rel.manual eval_sent blank:en ./human_annotations_sentences.jsonl --label MECHANISM --span-label ENTITY
+
+

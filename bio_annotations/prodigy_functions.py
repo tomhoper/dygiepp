@@ -4,6 +4,7 @@ import json
 import argparse
 import utils as ut
 import dataset_creator as dc
+import kesafatkari as ks
 import os.path
 from os import path
 
@@ -348,7 +349,7 @@ if __name__ == "__main__":
 
   parser.add_argument('--root',
                         type=str,
-                        default="/data/aida/covid_clean/",
+                        default="/data/aida/covid_aaai/",
                         help='path to complete set of annotations',
                         required=False)
 
@@ -468,6 +469,8 @@ if __name__ == "__main__":
         ut.visualize_the_annotations_to_tsv(dataset, correction_tsv_file)
 
       test_keys, dev_keys = dc.get_test_indexes(args.annotated_path)
+      test_keys = ['ipmyfxk5_abstract', '1x1bnt5j_abstract', 'yfyd2ysn_abstract', 'tot67l0j_abstract', '7lf2c2ra_abstract', 'w8trclz6_abstract', 'v6f3c6ep_abstract', '43h1r4pm_abstract', 'afce61g0_abstract', '4y05t72c_abstract', '75dzc62b_abstract', 'rvxxeg32_abstract', 's4g3awyc_abstract', 'u2jky7gl_abstract', 'tt761tte_abstract', '84tvi1gb_abstract', 'tl2seigh_abstract', 'e2r38v29_abstract', 'oc90ec5v_abstract', 'ljzfyz37_abstract', 'tbbe54ue_abstract', 'xfnbv6o9_abstract', 'a1xy2k6s_abstract', 'ey040q2l_abstract', 'm7s39je2_abstract', '7rgk946s_abstract', 'kcm86l15_abstract', 'mjp6uyqz_abstract', 'll6lkhyd_abstract', 'hxlebas8_abstract', 'rs54zugh_abstract', 'q5mgue5z_abstract', 'puezkbza_abstract', 'bfw8ys04_abstract', 'xkfcc2dx_abstract', '70wp8n0d_abstract', 'clo5qzcz_abstract', '2jhxnape_abstract', 'u9svz7pf_abstract', '4213xdfk_abstract', '0mzzyih0_abstract', 'wfkk7dsm_abstract', 'bsz4va3o_abstract', 'bom4rhsh_abstract', 'xhdub3br_abstract', '4ijrdkxe_abstract', 'yj2kunat_abstract', 'z15j8izi_abstract', 'fexy2p6h_abstract', '31v9gvd8_abstract']
+      dev_keys = ['655polth_abstract', 'atj3fad6_abstract', 'azzgygzk_abstract', 'n6wz3rvb_abstract', '0n1pea70_abstract', '8mnfx8wo_abstract', 'dqeci7lc_abstract', '0b06zk1q_abstract', '58p5b2vw_abstract', 'z3v89zsx_abstract', 'fpsyem7x_abstract', '4r0t3q7j_abstract', 'zr3q5rd7_abstract', 'dif6czi2_abstract', 'w0lfgajt_abstract', 'wekvet6f_abstract', 'iomao9a7_abstract', 'ohq0i87o_abstract', '86srlles_abstract', 'y8o5j2be_abstract', 'rvp7xt2n_abstract', '0j4ot2rn_abstract', 'es7b1rs0_abstract', '8n2s0bl1_abstract', 'jtmokwgu_abstract', 'nmt221tu_abstract', '59sibx6a_abstract', 'ea2cty58_abstract', 'r847zzv9_abstract', '30d7t5bf_abstract']
       dc.create_annotated_covid(True, args.root, args.annotated_path, test_keys, dev_keys, args.output_data_name)
       print('mech only data created')
       dc.create_annotated_covid(False, args.root, args.annotated_path, test_keys, dev_keys, args.output_data_name)
@@ -545,22 +548,61 @@ if __name__ == "__main__":
     # data_list =  ut.read_data_base(""  + "validation_input_madeline.jsonl", "tom")
 
     # ut.visualize_the_annotations_to_tsv(data_list, "validations/input_madeline_tom.tsv")
-  elif args.command_type == "madeline_temp":
-    ut.run_prodigy_db_out("ner_rels_bio_madeline_correction","", "madeline_temp.jsonl")
-    data_list =  ut.read_data_base("validations/"  + "madeline_tom.jsonl", "tom")
-    ut.visualize_the_annotations_to_tsv_reverse(data_list, "madeline_temp.tsv")
+  elif args.command_type == "madeline_final":
+    ut.run_prodigy_db_out("ner_rels_bio_madeline_correction","validations/", "madeline_final.jsonl")
+    
+    #fix stichings 
+    doc_id_list = ks.find_the_ids_with_issues("validations/madeline_final.jsonl")
+    ks.write_stiching_docs("metadata", "validations/madeline_final.jsonl", doc_id_list, "validations/for_madeline_final_stiching.jsonl","validations/madeline_final_corrected.jsonl")
 
-    test_keys, dev_keys = dc.get_test_indexes("madeline_temp.tsv")
-    dc.create_annotated_covid(True, args.root, "madeline_temp.tsv", test_keys, dev_keys, "madeline_temp")
+
+    data_list =  ut.read_data_base("validations/madeline_final_corrected.jsonl", "madeline")
+    print(len(data_list))
+    ut.visualize_the_annotations_to_tsv_reverse(data_list, "validations/madeline_final.tsv")
+
+
+
+    test_keys, dev_keys = dc.get_test_indexes("validations/madeline_final.tsv")
+    dc.create_annotated_covid(True, args.root, "validations/madeline_final.tsv", test_keys, dev_keys, "madeline_final")
     print('mech only data created')
-    dc.create_annotated_covid(False, args.root, "madeline_temp.tsv", test_keys, dev_keys, "madeline_temp")
+    dc.create_annotated_covid(False, args.root, "validations/madeline_final.tsv", test_keys, dev_keys, "madeline_final")
     print('mech effect data created')
-    dc.write_gold_file(True, args.root, "madeline_temp.tsv", test_keys, "madeline_temp")
+    dc.write_gold_file(True, args.root, "validations/madeline_final.tsv", test_keys, "madeline_final")
     print('mech only gold created')
 
-    dc.write_gold_file(False, args.root, "madeline_temp.tsv", test_keys, "madeline_temp")
+    dc.write_gold_file(False, args.root, "validations/madeline_final.tsv", test_keys, "madeline_final")
     print('mech effect gold created')
-    dc.write_gold_file(False, args.root, "madeline_temp.tsv", dev_keys, "dev_" + "madeline_temp")
-    dc.write_gold_file(True, args.root, "madeline_temp.tsv", dev_keys, "dev_" + "madeline_temp")
+    dc.write_gold_file(False, args.root, "validations/madeline_final.tsv", dev_keys, "dev_" + "madeline_final")
+    dc.write_gold_file(True, args.root, "validations/madeline_final.tsv", dev_keys, "dev_" + "madeline_final")
 
 
+  elif args.command_type == "madeline_final_and_stiching":
+    ut.run_prodigy_db_out("ner_rels_bio_madeline_correction","validations/", "madeline_final.jsonl")
+    
+    #fix stichings 
+    doc_id_list = ks.find_the_ids_with_issues("validations/madeline_final.jsonl")
+    ks.write_stiching_docs("metadata", "validations/madeline_final.jsonl", doc_id_list, "validations/for_madeline_final_stiching.jsonl","validations/madeline_final_corrected.jsonl")
+    #at the moment we are reading tom's annotations for stichings
+
+    ut.run_prodigy_db_out("tom_stiching", "", "tom_output_stiching.jsonl")
+    stiching_docs = ut.read_data_base("tom_output_stiching.jsonl", "tom")
+
+    data_list =  ut.read_data_base("validations/"  + "madeline_final_corrected.jsonl", "madeline")
+    data_list = data_list + stiching_docs
+    print(len(data_list))
+    ut.visualize_the_annotations_to_tsv_reverse(data_list, "validations/madeline_final_stichings.tsv")
+
+
+
+    test_keys, dev_keys = dc.get_test_indexes("validations/madeline_final_stichings.tsv")
+    dc.create_annotated_covid(True, args.root, "validations/madeline_final_stichings.tsv", test_keys, dev_keys, "madeline_final_stichings")
+    print('mech only data created')
+    dc.create_annotated_covid(False, args.root, "validations/madeline_final_stichings.tsv", test_keys, dev_keys, "madeline_final_stichings")
+    print('mech effect data created')
+    dc.write_gold_file(True, args.root, "validations/madeline_final_stichings.tsv", test_keys, "madeline_final_stichings")
+    print('mech only gold created')
+
+    dc.write_gold_file(False, args.root, "validations/madeline_final_stichings.tsv", test_keys, "madeline_final_stichings")
+    print('mech effect gold created')
+    dc.write_gold_file(False, args.root, "validations/madeline_final_stichings.tsv", dev_keys, "dev_" + "madeline_final_stichings")
+    dc.write_gold_file(True, args.root, "validations/madeline_final_stichings.tsv", dev_keys, "dev_" + "madeline_final_stichings")
