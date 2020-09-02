@@ -16,7 +16,7 @@ We examine performance on the gold dev set.
   - `covid`: Copied from `allgood:/data/aida/covid_clean/UnifiedData/covid_anno_par_s_final/mapped/mech_effect`.
 - `cleanup`
   - Remove `section` from the covid data.
-  - Remove the NER annotations from the spike data.
+  - Remove the NER annotations from the spike data. UPDATE (09-01) these are kept now. The NER's were stored in pairs matching the relation mentions. Ideal with this by flattening the list.
   - Throw out spike entries that have empty strings in them after tokenizing (by whitespace splitting). This discards 160 / 14,766 examples.
   - Also throw out Spike entries with tokens not in the BERT vocab; these break things. Only discards a handful of examples.
 - `collated`: Collate the data for faster training.
