@@ -4,6 +4,7 @@
 !scripts/data/*
 **/models/*
 **/results/*
+**/fig/*
 pretrained/*
 predictions/*
 **/stanford*/*
