@@ -15,6 +15,10 @@ from allennlp.data import token_indexers, fields, Vocabulary, Token
 DYGIE_PATH = "/data/dwadden/proj/dygie/dygiepp-new"
 
 
+def flatten(xxs):
+    return [x for xs in xxs for x in xs]
+
+
 def load_jsonl(fname):
     return [json.loads(x) for x in open(fname)]
 
@@ -107,7 +111,17 @@ def cleanup():
         # Fix the sentences. Right now, it's a list of length-1 list of
         # space-separate tokens. Need to split the tokens out.
         for entry in data:
-            del entry["ner"]
+            # Flatten NER annotations and remove duplicates. Right now, there's
+            # NER pairs for all relations.
+            if len(entry["ner"]) != 1:
+                flat = flatten(entry["ner"])
+                to_dedup = [tuple(x) for x in flat]
+                deduped = sorted(set(to_dedup))
+                # The second set of brackets are correct.
+                entry["ner"] = [[list(x) for x in deduped]]
+
+            assert len(entry["ner"]) == 1
+
             new_sents = []
             sentences = entry["sentences"]
 
