@@ -33,6 +33,11 @@ Make coreference predictions on Aida's data, merge into a `.csv`, and send back.
 - `07_merge.py`: Merge together the two sets of coref predictions. I use the following procedure to merge the coref clusters from the two predictions (call them `doc1` and `doc2`):
   - If there is an exact match between a span in `doc1` and a span in `doc2`, merge the clusters containing these spans. Then, iteratively merge in any additional clusters that match one of the spans in the new, merged clusters.
   - Remove any clusters for which no match was found.
+- `08_count_merged.py`: Count how many spans and clusters are left in the merged data.
+  |            |   scierc |   merged |   genia-scierc |
+  |------------|----------|----------|----------------|
+  | n_clusters |      526 |      172 |            595 |
+  | n_spans    |     2002 |      969 |           1644 |
 
 
 ## Concrete example of cluster merging
