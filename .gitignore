@@ -5,6 +5,7 @@
 **/models/*
 **/results/*
 **/fig/*
+**/log/*
 pretrained/*
 predictions/*
 **/stanford*/*
