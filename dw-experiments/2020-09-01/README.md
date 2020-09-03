@@ -30,3 +30,24 @@ Make coreference predictions on Aida's data, merge into a `.csv`, and send back.
     - But on COVID, their similarity is much lower (F1=0.20).
 - `06_analyze_differences.py`: Look at the differences in prediction between the two models.
   - Results: `results/prediction-differences.pdf`.
+- `07_merge.py`: Merge together the two sets of coref predictions. I use the following procedure to merge the coref clusters from the two predictions (call them `doc1` and `doc2`):
+  - If there is an exact match between a span in `doc1` and a span in `doc2`, merge the clusters containing these spans. Then, iteratively merge in any additional clusters that match one of the spans in the new, merged clusters.
+  - Remove any clusters for which no match was found.
+
+
+## Concrete example of cluster merging
+
+```python
+# Coref clusters indicated by token indices (for this example, token indices are simpler than spans).
+doc1 = [[11, 13], [12, 15]]
+doc2 = [[13, 15, 16], [18, 20]]
+
+# Merge first cluster in doc1 and first cluster in doc2, since they match on token 13.
+merged = [11, 13, 15, 16]
+
+# Now, the second cluster in doc 1 can also be merged into this cluster, since it matches with the merged cluster on token 15.
+merged = [11, 12, 13, 14, 16]
+
+# The second cluster in doc2 doesn't have a match in doc 1, so we don't include it.
+return [merged]
+```
