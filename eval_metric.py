@@ -26,6 +26,12 @@ if __name__ == '__main__':
                         default="covid_anno_par",
                         required=True)
 
+    parser.add_argument('--gold_combo',
+                        type=Path,
+                        help='root dataset folder, contains train/dev/test',
+                        default="covid_anno_par",
+                        required=True)
+
     parser.add_argument('--root',
                         type=Path,
                         default='../coviddata',
@@ -46,12 +52,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
-        gold_path = pathlib.Path(args.root) / 'gold_s_final' /  'mech_effect' / 'gold_par.tsv'
-        pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
+        gold_path = pathlib.Path(args.root) / args.gold_combo  /  'mech_effect' / 'gold_par.tsv'
+        pred_dir = pathlib.Path(args.root) / 'predictions'/ args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
-        gold_path = pathlib.Path(args.root) / 'gold_s_final' /  'mech' / 'gold_par.tsv'
+        gold_path = pathlib.Path(args.root) / args.gold_combo  /  'mech' / 'gold_par.tsv'
         pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech/' 
 
@@ -60,7 +66,7 @@ if __name__ == '__main__':
 
     GOLD_PATH = pathlib.Path(gold_path)
     PREDS_PATH = pathlib.Path(pred_dir)
-
+    print(PREDS_PATH)
     golddf = pd.read_csv(GOLD_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
     golddf = golddf[golddf["y"]=="accept"]
     #read predictions, place in dictionary
@@ -122,7 +128,7 @@ if __name__ == '__main__':
                         for topK in k_th:
                             _, p, _, _ = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK,consider_reverse=consider_reverse)
                             p_at_k.append(p)
-                        # if match_metric == "substring" and collapse == False:
+                        # # if match_metric == "substring" and collapse == False:
                         #     print("hereeee")
                         #     errors = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
                         # if match_metric == "substring" and collapse == True:
@@ -140,14 +146,14 @@ if __name__ == '__main__':
        
     print(tabulate(res_list, headers =["model","P","R","F1","P@100","P@150","P@200","span_P","span_R","span_F1","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"]))
     print ("****")
-    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"])
+    stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","span_P","span_R","span_F1","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"])
     stats_path = stat_path / 'stats.tsv'
     stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
 
-    errors_path = stat_path / 'errors_non_collapse.tsv'
-    errors_collapse_path = stat_path / 'errors_collapse.tsv'
+    # errors_path = stat_path / 'errors_non_collapse.tsv'
+    # errors_collapse_path = stat_path / 'errors_collapse.tsv'
 
-    errors.to_csv(errors_path,header=True,index=False, sep="\t")
-    errors_collapse.to_csv(errors_collapse_path,header=True,index=False, sep="\t")
+    # errors.to_csv(errors_path,header=True,index=False, sep="\t")
+    # errors_collapse.to_csv(errors_collapse_path,header=True,index=False, sep="\t")
 
 

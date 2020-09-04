@@ -16,6 +16,17 @@ nlp = spacy.load("en_core_sci_sm")
 from rouge import Rouge 
 rouge = Rouge()
 
+
+def get_relation_scores(preds, gold, metric_list):
+    res_dict = {}
+    c = list(itertools.product(gold.values, preds))
+    for match_metric in metric_list:
+        for pair in c:
+            m0 = span_score(pair[0][0], pair[1][0],match_metric) 
+            m1 = span_score(pair[0][1], pair[1][1],match_metric) 
+            res_dict[(pair[0][0], pair[0][1],pair[1][0], pair[1][1], match_metric)] = (m0,m1)
+    return res_dict    
+
 def get_openie_predictor():
     openiepredictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/openie-model.2020.03.26.tar.gz")
     return(openiepredictor)
@@ -89,6 +100,34 @@ def span_matching(span1,span2,metric,thresh=None):
     elif metric == "exact":
         return exact_match(span1, span2)
     return match
+
+def span_score(span1,span2,metric):
+    match = False
+    if metric =="substring":
+        if span1 in span2 or span2 in span1:
+            return 1
+        else:
+            return 0
+    elif metric =="jaccard":
+        j = jaccard_similarity(span1.split(),span2.split())
+        return j
+    elif metric =="head":
+        doc = nlp(span1)
+        root1 = [t.text for t in doc if t.dep_ =="ROOT"]
+        doc = nlp(span2)
+        root2 = [t.text for t in doc if t.dep_ =="ROOT"]
+        if root1[0] == root2[0]:
+            return 1
+        else:
+            return 0
+    elif metric =="rouge":
+        scores = rouge.get_scores(span1, span2)
+        return scores[0]['rouge-l']['f']
+    elif metric == "exact":
+        if exact_match(span1, span2):
+            return 1
+        else:
+            return 0
 
 def convert_coref_json_to_tsv(file_path):
     input_file = open(file_path)
@@ -491,6 +530,7 @@ def ie_eval_agreement(relations, golddf, coref=None, collapse = False, match_met
                 else:
                     # import pdb; pdb.set_trace()
                     labels = [pair[0][2],pair[1][2]]
+
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=None,consider_reverse=consider_reverse)
                 #changing this so that it can check all the coref matches of args.if m and
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
@@ -535,7 +575,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
         # if topK != None:
         #     predrels = predrels[:topK]
     else:
-        predrels = relations[["id","arg0","arg1","rel"]].set_index("id",inplace=False)
+        predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
 
     
     if transivity:
@@ -545,7 +585,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
     good_preds = []
     found_from_gold = []
     seen_pred_gold = {}
-    if topK == None:
+    if topK == None or topK > len(predrels)-1:
         topK = len(predrels)
     
     predrels = predrels[:topK]
@@ -566,6 +606,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                 else:
                     # import pdb; pdb.set_trace()
                     labels = [pair[0][2],pair[1][2]]
+                # import pdb; pdb.set_trace()
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
                 #changing this so that it can check all the coref matches of args.if m and
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
@@ -573,6 +614,35 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                         import pdb; pdb.set_trace()
                     if [i,pair[1][0],pair[1][1]] not in good_preds:
                         good_preds.append([i,pair[1][0],pair[1][1]])
+                    # if [i,pair[0][0],pair[0][1]] not in found_from_gold:
+                    #     found_from_gold.append([i,pair[0][0],pair[0][1]])
+                    seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1
+
+    seen_pred_gold = {}
+    for i in predrels.index.unique():
+        if i in goldrels.index.unique():
+            gold = goldrels.loc[[i]]
+            coref_rels = None
+            if coref != None:
+                coref_rels = corefrels.loc[i]
+            if type(predrels.loc[i]) == pd.core.series.Series:
+                preds = [predrels.loc[i].values]
+            else:
+                preds = predrels.loc[i].values
+            c = list(itertools.product(gold.values, preds))
+            for pair in c:
+                if collapse:
+                    labels = [1,1]
+                else:
+                    # import pdb; pdb.set_trace()
+                    labels = [pair[0][2],pair[1][2]]
+                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
+                #changing this so that it can check all the coref matches of args.if m and
+                if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
+                    if len(pair[0][0]) == 1:
+                        import pdb; pdb.set_trace()
+                    # if [i,pair[1][0],pair[1][1]] not in good_preds:
+                    #     good_preds.append([i,pair[1][0],pair[1][1]])
                     if [i,pair[0][0],pair[0][1]] not in found_from_gold:
                         found_from_gold.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1

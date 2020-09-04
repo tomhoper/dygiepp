@@ -147,114 +147,6 @@ class Dataset:
       print (count)
       return pruned_elements
 
-    def prune_by_abstract(self, count, conf_threshold, prev_ds=None, Bio_Dygie=False):
-      # to remove validation set doc keys:
-      validation_doc_keylist_file = open("valid_key_list.txt")
-      val_doc_key = []
-      for line in validation_doc_keylist_file:
-        val_doc_key.append(line[:-1])
-
-      conf_score_list = []
-      # import pdb; pdb.set_trace()
-      for element in self.js:
-        if prev_ds and (seen_before(element, prev_ds) or element["doc_key"] in val_doc_key):
-            print("it should not be here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            continue
-        
-        minimum_is_not_meet = False
-        ave_conf_score = 0.0
-        relation_count = 0.0        
-        for j in range(len(element['predicted_relations'])):
-            for i in range(len(element['predicted_relations'][j])):
-                relation = element['predicted_relations'][j][i]
-                if (relation[4] == "USED-FOR" or relation[4] == "scierc:USED-FOR"):
-                    # print(float(relation[5]))
-                    if float(relation[5]) < 0.7:
-                        minimum_is_not_meet = True
-                    relation_count += 1.0
-                    ave_conf_score += float(relation[5])
-        if relation_count > 0 and  ave_conf_score/relation_count > conf_threshold and minimum_is_not_meet == False:
-            conf_score_list.append(ave_conf_score/relation_count)
-
-      conf_score_list.sort(reverse=True)
-      index_selected = count
-      if len(conf_score_list) < count:
-         index_selected = len(conf_score_list) - 1
-      while(index_selected != len(conf_score_list) - 1 and conf_score_list[index_selected] == conf_score_list[index_selected+1]):
-        print(index_selected)
-        index_selected += 1
-
-      while(index_selected != -1 and conf_score_list[index_selected]< conf_threshold):
-        index_selected -= 1
-
-      if index_selected == -1:
-        return []
-      threshold = conf_score_list[index_selected]
-      print("threshold is " + str(threshold))
-      pruned_elements = []
-      count = 0
-
-
-      for element in self.js:
-        if prev_ds and seen_before(element, prev_ds):
-            continue
-        prune_relations = []
-        avg_relation_score = 0.0
-        avg_count = 0.0
-        for j in range(len(element['predicted_relations'])):
-            prune_relations.append([])
-            for i in range(len(element['predicted_relations'][j])):
-              relation = element['predicted_relations'][j][i]
-              if (relation[4] == "USED-FOR" or relation[4] == "scierc:USED-FOR"):
-                relation[4] = "scierc:USED-FOR"
-                avg_relation_score += relation[5]
-                prune_relations[j].append(relation[:5])
-                avg_count += 1.0
-
-        if avg_count> 0.0 and (avg_relation_score/avg_count) >=threshold:
-          count += avg_count
-          new_element = {}
-          new_element["sentences"] = element["sentences"]
-          print("self-train:")
-          new_element["doc_key"] = "self-train:covid:"+ element["doc_key"]
-          # import pdb; pdb.set_trace()
-          new_ner = []
-          if Bio_Dygie == False:
-            for iii in range(len(element["predicted_ner"])):
-                for jjj in range(len(element["predicted_ner"][iii])):
-                    element["predicted_ner"][iii][jjj][2] = "scierc:" + element["predicted_ner"][iii][jjj][2]
-            new_element["ner"] = element["predicted_ner"]
-          else:
-            for iii in range(len(element["predicted_ner"])):
-                new_row = []
-                
-                ner_index_seen = []
-                for jjj in range(len(element["predicted_ner"][iii])):
-                    # element["predicted_ner"][iii][jjj][2] =  element["predicted_ner"][iii][jjj][2]
-                    new_cell = []
-                    max_score = -1
-                    max_index = jjj
-                    span_ind = (element["predicted_ner"][iii][jjj][0], element["predicted_ner"][iii][jjj][1])
-                    for kkk in range(len(element["predicted_ner"][iii])):
-                        if (element["predicted_ner"][iii][kkk][0], element["predicted_ner"][iii][kkk][1]) == span_ind:
-                            if float(element["predicted_ner"][iii][kkk][2][0]['score']) > max_score:
-                                max_score = float(element["predicted_ner"][iii][kkk][2][0]['score'])
-                                max_index = kkk
-                    if max_index not in ner_index_seen:
-                        new_cell.append(element["predicted_ner"][iii][max_index][0])
-                        new_cell.append(element["predicted_ner"][iii][max_index][1])
-                        new_cell.append(element["predicted_ner"][iii][max_index][2][0]['label'])
-                        new_row.append(new_cell)
-                        ner_index_seen.append(max_index)
-                new_ner.append(new_row)
-            new_element["ner"] = new_ner
-          new_element["relations"] = prune_relations
-          pruned_elements.append((new_element, float(avg_relation_score)/float(avg_count)))
-      print (count)
-      return pruned_elements
-
-    
-
 
 class Document:
     def __init__(self, js):
@@ -445,8 +337,8 @@ class Relation:
         start1, end1 = relation[0], relation[1]
         start2, end2 = relation[2], relation[3]
         label = relation[4]
-        if len(relation) > 5:
-            score = relation[5]
+        if len(relation) > 6:
+            score = relation[6]
         else:
             score = 1.0
         span1 = Span(start1, end1, text, sentence_start)
