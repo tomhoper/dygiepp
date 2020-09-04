@@ -7,3 +7,9 @@ Make coref predictions on large collection of abstracts, and merge clusters on "
   - Outputs: `data/shards`, which has 4 equal-sized files.
 - `02_predict.py`: Make predictions on the 4 shards of data, using both of the models (SciERC-trained only and SciERC+GENIA)
   - Inputs: `data/shards`
+  - Outputs: `results/predictions`; one per shard and model.
+- `03_merge_all`: Merge the predictions from all shards and from the two models.
+  - Inputs: `results/predictions`
+  - Outputs: In `results/predictions-merged`.
+    - The merged predictions are in `predictions.jsonl`.
+    - The failed predictions are in `failed-txt`.
