@@ -23,8 +23,7 @@ def save_jsonl(xs, fname):
 FAILURE = "_FAILED_PREDICTION"
 
 in_dir = "results/predictions"
-out_file = "results/predictions-merged/predictions.jsonl"
-failure_file = "results/predictions-merged/failed.txt"
+failure_file = "results/predictions-collected/failed.txt"
 
 scierc = [load_jsonl(f"{in_dir}/{shard}-scierc.jsonl")
           for shard in [1, 2, 3, 4]]
@@ -39,7 +38,9 @@ keys_both = [x["doc_key"] for x in genia_scierc]
 assert keys_scierc == keys_both
 assert len(set(keys_scierc)) == len(keys_scierc)
 
-res = []
+res_merged = []
+res_scierc = []
+res_both = []
 with open(failure_file, "w") as f_failure:
     for doc_scierc, doc_both in zip(scierc, genia_scierc):
         assert doc_scierc["doc_key"] == doc_both["doc_key"]
@@ -48,7 +49,13 @@ with open(failure_file, "w") as f_failure:
             print(doc_scierc["doc_key"], file=f_failure)
             continue
 
+        res_scierc.append(doc_scierc)
+        res_both.append(doc_both)
         merged = merge_doc(doc_scierc, doc_both)
-        res.append(merged)
+        res_merged.append(merged)
 
-save_jsonl(res, out_file)
+results = [res_scierc, res_both, res_merged]
+names = ["scierc", "genia-scierc", "merged"]
+for result, name in zip(results, names):
+    out_file = f"results/predictions-collected/{name}.jsonl"
+    save_jsonl(result, out_file)

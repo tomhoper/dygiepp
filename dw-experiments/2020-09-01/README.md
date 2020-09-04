@@ -38,6 +38,10 @@ Make coreference predictions on Aida's data, merge into a `.csv`, and send back.
   |------------|----------|----------|----------------|
   | n_clusters |      526 |      172 |            595 |
   | n_spans    |     2002 |      969 |           1644 |
+- `09_to_tsv.py`: Dump output to `.tsv`. Results go in `rseults/predictions`. Schema:
+  ```text
+  doc_key  cluster_id  cluster_exemplar  cluster_members ...
+  ```
 
 
 ## Concrete example of cluster merging
