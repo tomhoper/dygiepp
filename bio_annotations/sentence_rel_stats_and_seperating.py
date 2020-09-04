@@ -22,9 +22,12 @@ def find_cross_sentence_rel_stats(input_filepath): #the input_file is the origin
     print("out of " + str(total_relation_count) + " the number of cross sentence relations is : " + str(cross_sentence_relation_count))
 
 
-def create_sentence_level_relations_tsv(input_filepath):
-    output_tsv_file = open("sentence_level_complete.tsv", "w")
+def create_sentence_level_relations_tsv(output_filepath, input_filepath, stiching_file_path=None):
+    output_tsv_file = open(output_filepath, "w")
     docs = [json.loads(line) for line in open(input_filepath)]
+    if stiching_file_path != None:
+        stiching_docs = [json.loads(line) for line in open(stiching_file_path)]
+        docs = docs + stiching_docs
     for doc in docs:
         text = doc["text"]
         doc_key = doc['meta']['doc_key']
@@ -52,8 +55,14 @@ def create_sentence_level_relations_tsv(input_filepath):
                 child = child[:-1]
 
             for sent in sentences:
+              if ( sent[len(sent)-1]) != '.' and sent[len(sent)-2] != '.':
+                sent = sent + '.'
+
               if head in sent and child in sent:
                 output_tsv_file.write(doc_key + '\t' + sent + '\t' + head + '\t' + child + '\t' + relation_label + '\taccept\t' + annotator_name + '\n')
                 
                 
-create_sentence_level_relations_tsv("tom_output_total.jsonl")
+create_sentence_level_relations_tsv("sentence_level_madeline_final.tsv", "validations/madeline_final_corrected.jsonl")
+find_cross_sentence_rel_stats("validations/madeline_final_corrected.jsonl")
+# create_sentence_l evel_relations_tsv("sentence_level_madeline_final_tom_stiching.tsv", "validations/madeline_final_corrected.jsonl", stiching_file_path="tom_output_stiching.jsonl")
+

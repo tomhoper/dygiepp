@@ -19,15 +19,17 @@ DEFAULT_NAME_LIST = ["madeline", "megan", "sara", "yeal", "tom", "kristina", "je
 DEFAULT_CORRECTION_NAME_LIST = ["madeline", "megan", "sara"]
 
 def find_span_start_token_in_text(text, span):
+
     text_tokens = process_paragraph(text)
     span_tokens = process_paragraph(span)
-    start_index = -1
+    start_index = 0
+
     span_found = False
     while start_index < len(text_tokens):
       if text_tokens[start_index] == span_tokens[0]:
         span_found = True
         for i in range(len(span_tokens)):
-          if start_index + i < len(text_tokens) or span_tokens[i] != text_tokens[start_index + i]:
+          if (start_index + i > len(text_tokens) - 1) or span_tokens[i] != text_tokens[start_index + i]:
             span_found = False
             break
       if span_found == True:
@@ -45,6 +47,7 @@ def find_stats_span_distance(dataset):
     for data in dataset:
       arg0_index = find_span_start_token_in_text(data[1], data[2])
       arg1_index = find_span_start_token_in_text(data[1], data[3])
+
       total_count += 1
       dist = abs(arg1_index - arg0_index)
       ave_distance += dist
@@ -82,12 +85,19 @@ def length_distributions(dataset):
     print("length distribution of spans in arg0 is :" + str(arg0_len))
     print("length distribution of spans in arg1 is :" + str(arg1_len))
     print("length distribution of spans in total args is :" + str(total_len))
-    arg0_percentile = [sum(arg0_len[:i+1])/sum(arg0_len) for i in range(len(arg0_len)-1)]
-    arg1_percentile = [sum(arg1_len[:i+1])/sum(arg1_len) for i in range(len(arg1_len)-1)]
-    total_percentile = [sum(total_len[:i+1])/sum(total_len) for i in range(len(total_len)-1)]
-    print("length percentiles of spans in arg0 is :" + str(arg0_percentile))
-    print("length percentiles of spans in arg1 is :" + str(arg1_percentile))
-    print("length percentiles of spans in total is :" + str(total_percentile))
+
+    total_sum = 0.0
+    for i in range(len(arg0_len)):
+      total_sum += i * (total_len[i])
+
+    print("length avg of spans in total args is :" + str(total_sum/sum(total_len)))
+    # arg0_percentile = [sum(arg0_len[:i+1])/sum(arg0_len) for i in range(len(arg0_len)-1)]
+    # arg1_percentile = [sum(arg1_len[:i+1])/sum(arg1_len) for i in range(len(arg1_len)-1)]
+    # total_percentile = [sum(total_len[:i+1])/sum(total_len) for i in range(len(total_len)-1)]
+    # print("length percentiles of spans in arg0 is :" + str(arg0_percentile))
+    # print("length percentiles of spans in arg1 is :" + str(arg1_percentile))
+    # print("length percentiles of spans in total is :" + str(total_percentile))
+
     
 
 
@@ -212,8 +222,9 @@ def convert_to_json(text, relation_pairs, doc_key):
     relations_info["head_span"] = head_token_info
     relations_info["child_span"] = child_token_info
     if "token_end" not in head_token_info or "token_end" not in child_token_info:
-      return {}
       import pdb; pdb.set_trace()
+      return {}
+
     relations_info["head"] = head_token_info["token_end"]
     relations_info["child"] = child_token_info["token_end"]
 
