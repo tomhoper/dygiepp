@@ -62,5 +62,6 @@ def create_sentence_level_relations_tsv(output_filepath, input_filepath, stichin
                 
                 
 create_sentence_level_relations_tsv("sentence_level_madeline_final.tsv", "validations/madeline_final_corrected.jsonl")
+find_cross_sentence_rel_stats("validations/madeline_final_corrected.jsonl")
 # create_sentence_l evel_relations_tsv("sentence_level_madeline_final_tom_stiching.tsv", "validations/madeline_final_corrected.jsonl", stiching_file_path="tom_output_stiching.jsonl")
 
