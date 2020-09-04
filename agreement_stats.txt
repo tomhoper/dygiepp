@@ -1,0 +1,94 @@
+name      P     R    F1  collapse    match_mettric      threshold
+------  ---  ----  ----  ----------  ---------------  -----------
+megan     0  0      0    False       jaccard                  0.3
+megan     0  0      0    False       jaccard                  0.5
+megan     0  0      0    True        jaccard                  0.3
+megan     0  0      0    True        jaccard                  0.5
+megan     0  0      0    False       rouge                    0.5
+megan     0  0      0    True        rouge                    0.5
+megan     1  0.25   0.4  False       substring                1
+megan     1  0.25   0.4  True        substring                1
+****
+****
+name         P     R    F1  collapse    match_mettric      threshold
+--------  ----  ----  ----  ----------  ---------------  -----------
+madeline  0.67  0.45  0.54  False       jaccard                  0.3
+madeline  0.35  0.22  0.27  False       jaccard                  0.5
+madeline  0.67  0.45  0.54  True        jaccard                  0.3
+madeline  0.35  0.22  0.27  True        jaccard                  0.5
+madeline  0.63  0.39  0.48  False       rouge                    0.5
+madeline  0.63  0.39  0.48  True        rouge                    0.5
+madeline  0.74  0.52  0.61  False       substring                1
+madeline  0.74  0.52  0.61  True        substring                1
+****
+****
+****
+for name megan
+****
+name         P     R    F1  collapse    match_mettric      threshold
+--------  ----  ----  ----  ----------  ---------------  -----------
+madeline  0.24  0.26  0.25  False       jaccard                  0.3
+madeline  0.12  0.13  0.12  False       jaccard                  0.5
+madeline  0.29  0.31  0.3   True        jaccard                  0.3
+madeline  0.14  0.15  0.14  True        jaccard                  0.5
+madeline  0.19  0.2   0.19  False       rouge                    0.5
+madeline  0.24  0.26  0.25  True        rouge                    0.5
+madeline  0.59  0.5   0.54  False       substring                1
+madeline  0.69  0.61  0.65  True        substring                1
+****
+****
+for name madeline
+
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+
+calculating agreement after self correction 
+for name sara
+****
+name      P    R    F1  collapse    match_mettric      threshold
+------  ---  ---  ----  ----------  ---------------  -----------
+megan     0  0    0     False       jaccard                  0.3
+megan     0  0    0     False       jaccard                  0.5
+megan     1  0.5  0.67  True        jaccard                  0.3
+megan     0  0    0     True        jaccard                  0.5
+megan     0  0    0     False       rouge                    0.5
+megan     1  0.5  0.67  True        rouge                    0.5
+megan     0  0    0     False       substring                1
+megan     1  0.5  0.67  True        substring                1
+****
+****
+name         P     R    F1  collapse    match_mettric      threshold
+--------  ----  ----  ----  ----------  ---------------  -----------
+madeline  0.98  0.96  0.97  False       jaccard                  0.3
+madeline  0.98  0.96  0.97  False       jaccard                  0.5
+madeline  0.98  0.96  0.97  True        jaccard                  0.3
+madeline  0.98  0.96  0.97  True        jaccard                  0.5
+madeline  0.98  0.96  0.97  False       rouge                    0.5
+madeline  0.98  0.96  0.97  True        rouge                    0.5
+madeline  0.98  0.96  0.97  False       substring                1
+madeline  0.98  0.96  0.97  True        substring                1
+****
+****
+****
+for name megan
+****
+name         P     R    F1  collapse    match_mettric      threshold
+--------  ----  ----  ----  ----------  ---------------  -----------
+madeline  0.88  0.87  0.88  False       jaccard                  0.3
+madeline  0.88  0.87  0.87  False       jaccard                  0.5
+madeline  0.89  0.89  0.89  True        jaccard                  0.3
+madeline  0.88  0.88  0.88  True        jaccard                  0.5
+madeline  0.88  0.87  0.87  False       rouge                    0.5
+madeline  0.89  0.88  0.89  True        rouge                    0.5
+madeline  0.89  0.88  0.89  False       substring                1
+madeline  0.9   0.9   0.9   True        substring                1
+
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+After madeline vetting of tom :
+for case collase False agreement is : 0.81
+for case collase True agreement is : 0.86
