@@ -135,6 +135,11 @@ def correct_before_doc_removing_last_sentence(doc):
         cutting_ind = -1
         extra_string = doc['text']
         break
+
+          # cutting_ind = doc['text'][:cutting_ind-1].rindex(re.findall("\?|\.|\!", doc['text'])[len(re.findall("\?|\.|\!", doc['text']))-2])
+          # extra_string = doc['text'][cutting_ind+1:]
+
+
     
     res["text"] = doc['text'][:cutting_ind+1]
     
@@ -160,6 +165,7 @@ def add_missing_parts(text, sorted_list, doc_key):
     new_sorted_list = []
     if sorted_list[0][0] != 0: # first partition is missing
       part_text = text[:sorted_list[0][0]]
+
       new_part = ut.convert_to_json(part_text, [], doc_key)
       new_part['answer'] = "reject"
       new_sorted_list.append([0, new_part])
@@ -214,6 +220,7 @@ def write_stiching_docs(metadata_path, input_file_path, id_list, stiching_file_p
     metadata = read_metadata(metadata_path)
     output_file = open(stiching_file_path, "w")
     correct_output_file = open(correct_file_path, "w")
+
     output_docs = []
     for doc in docs:
       if doc["meta"]["doc_key"] not in id_list:
@@ -315,7 +322,9 @@ def write_stiching_docs(metadata_path, input_file_path, id_list, stiching_file_p
                   correct_output_file.write("\n")
 
                 
+
 # doc_id_list = find_the_ids_with_issues("corrections/jsons/corrections_tom.jsonl")
 # write_stiching_docs("metadata", "corrections/jsons/corrections_tom.jsonl", doc_id_list)
+
 
 

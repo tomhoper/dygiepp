@@ -98,3 +98,4 @@ prodigy rel.manual tom_event blank:en ./tom_output_total.jsonl --label USED,EFFE
 prodigy rel.manual eval_sent blank:en ./human_annotations_sentences.jsonl --label MECHANISM --span-label ENTITY
 
 
+

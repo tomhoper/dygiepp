@@ -32,6 +32,7 @@ if __name__ == '__main__':
                         default="covid_anno_par",
                         required=True)
 
+
     parser.add_argument('--root',
                         type=Path,
                         default='../coviddata',
@@ -66,7 +67,6 @@ if __name__ == '__main__':
 
     GOLD_PATH = pathlib.Path(gold_path)
     PREDS_PATH = pathlib.Path(pred_dir)
-    print(PREDS_PATH)
     golddf = pd.read_csv(GOLD_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
     golddf = golddf[golddf["y"]=="accept"]
     #read predictions, place in dictionary
@@ -146,6 +146,7 @@ if __name__ == '__main__':
        
     print(tabulate(res_list, headers =["model","P","R","F1","P@100","P@150","P@200","span_P","span_R","span_F1","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"]))
     print ("****")
+
     stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","span_P","span_R","span_F1","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"])
     stats_path = stat_path / 'stats.tsv'
     stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
@@ -155,5 +156,4 @@ if __name__ == '__main__':
 
     # errors.to_csv(errors_path,header=True,index=False, sep="\t")
     # errors_collapse.to_csv(errors_collapse_path,header=True,index=False, sep="\t")
-
 

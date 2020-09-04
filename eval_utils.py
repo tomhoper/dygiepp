@@ -575,7 +575,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
         # if topK != None:
         #     predrels = predrels[:topK]
     else:
-        predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
+        predrels = relations[["id","arg0","arg1", "rel"]].set_index("id",inplace=False)
 
     
     if transivity:
@@ -606,7 +606,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                 else:
                     # import pdb; pdb.set_trace()
                     labels = [pair[0][2],pair[1][2]]
-                # import pdb; pdb.set_trace()
+
                 m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
                 #changing this so that it can check all the coref matches of args.if m and
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
@@ -643,6 +643,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                         import pdb; pdb.set_trace()
                     # if [i,pair[1][0],pair[1][1]] not in good_preds:
                     #     good_preds.append([i,pair[1][0],pair[1][1]])
+
                     if [i,pair[0][0],pair[0][1]] not in found_from_gold:
                         found_from_gold.append([i,pair[0][0],pair[0][1]])
                     seen_pred_gold[(i,pair[0][0],pair[0][1],pair[1][0],pair[1][1])]=1

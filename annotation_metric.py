@@ -115,6 +115,7 @@ def get_agreement_on_after_self_correction(root):
     #TODO there is a bug here. what is madeline corrects the intersection of megan and sara again 
     print("calculating agreement after self correction ")
     name_list = ["tom", "madeline"]
+
     for i in range(len(name_list)):
         print ("for name "  + (name_list[i]))
         prediction_dict = {}
@@ -127,6 +128,11 @@ def get_agreement_on_after_self_correction(root):
             # annotated_path = pathlib.Path(args.root) / 'corrections_old' / 'tsvs' / file2_name
             gold_path = "bio_annotations/validations/madeline_tom.tsv"
             annotated_path = "bio_annotations/validations/input_madeline_tom.tsv"
+            file1_name = "corrections_" + name1 + '.tsv'
+            file2_name = "corrections_" + name2 + '.tsv'
+            gold_path = pathlib.Path(args.root) / 'self_corrections' / 'tsvs' / file1_name
+            annotated_path = pathlib.Path(args.root) / 'self_corrections' / 'tsvs' / file2_name
+
 
             GOLD_PATH = pathlib.Path(gold_path)
             PREDS_PATH = pathlib.Path(annotated_path)
@@ -169,6 +175,7 @@ if __name__ == '__main__':
     # get_agreement_on_initial_annotations(args.root)
 
     #report part 2: for all annotator print cross agreement after one round of correction
+
     get_agreement_on_after_self_correction(args.root)
 
     #get percentage of tome annotations that madeline chaneged 
@@ -188,4 +195,6 @@ if __name__ == '__main__':
     # predf = predf[predf["y"]=="accept"]
     # diff(predf,golddf, collapse=True, output_diff_path="collapse_madeline_changes.tsv")
 
+    # get_agreement_on_after_self_correction(args.root)
 
+    

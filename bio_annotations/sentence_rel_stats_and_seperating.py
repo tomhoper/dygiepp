@@ -57,6 +57,7 @@ def create_sentence_level_relations_tsv(output_filepath, input_filepath, stichin
             for sent in sentences:
               if ( sent[len(sent)-1]) != '.' and sent[len(sent)-2] != '.':
                 sent = sent + '.'
+
               if head in sent and child in sent:
                 output_tsv_file.write(doc_key + '\t' + sent + '\t' + head + '\t' + child + '\t' + relation_label + '\taccept\t' + annotator_name + '\n')
                 

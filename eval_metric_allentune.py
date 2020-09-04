@@ -44,8 +44,6 @@ if __name__ == '__main__':
                         type=int,
                         default=0)
 
-
-
     args = parser.parse_args()
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
@@ -79,6 +77,7 @@ if __name__ == '__main__':
          trail_strat_str = trail_strat_str + str(args.test_index)
       
       if file.startswith(trail_strat_str):
+
         run_stat_path = stat_path / file
         run_stat_path.mkdir(parents=True, exist_ok=True)
 
@@ -96,6 +95,7 @@ if __name__ == '__main__':
             continue
         if len(predf) > 1000:
             continue
+
         #check prediction label mapping matches the loaded gold file
         print(predf["rel"].unique())
         print(golddf["rel"].unique())
@@ -107,6 +107,7 @@ if __name__ == '__main__':
 
         for k,v in prediction_dict.items():
             trial_score = 0
+
             print(k)
             try:
                 print ("****")
@@ -132,13 +133,11 @@ if __name__ == '__main__':
                             res_list.append(res)
                             print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
                             corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3,consider_reverse=True)
-                            res = [k, precision, recall, F1, mech_effect, collapse, match_metric, 0.3]
-                            res_list.append(res)
-                            print('model: {0} collapsed: {1} metric: {2} precision:{3} recall {4} f1: {5}'.format(k, collapse, match_metric, precision,recall, F1))
-
+ 
                 if trial_score > best_run_score:
                     best_run_score = trial_score
                     best_run_index = k
+
             except:
                 print(k)
             print ("****")
@@ -148,5 +147,4 @@ if __name__ == '__main__':
         stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
         if args.test_data == False:
             print("best run is " + best_run_index)
-
 

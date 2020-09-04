@@ -14,6 +14,7 @@ def find_partitions_abstract_rel_count(data_list, data_tsv_paht):
     print("number of partitions is " + str(len(partition_count)))
     print("number of abstracts is " + str(len(abstract_count)))
 
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()  # pylint: disable=invalid-name
 

@@ -124,8 +124,6 @@ if __name__ == '__main__':
         
         pred_path = pathlib.Path(run_pred_dir) / "pred.json"
 
-        # if args.topk:
-        #     os.environ['TOPK_DECODE'] = str (args.topk)
 
         allennlp_command = [
                   "allennlp",
@@ -147,7 +145,5 @@ if __name__ == '__main__':
           prediction_to_tsv(ds, pathlib.Path(run_pred_dir) / "pred.tsv")
         except:
           pass
-
-
 
 
