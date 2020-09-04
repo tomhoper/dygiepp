@@ -31,17 +31,22 @@ in_data = [load_jsonl(fname) for fname in in_files]
 
 in_data = flatten(in_data)
 
+# Throw out documents that have sentences with a single token.
+out_data = []
 for entry in in_data:
     entry["dataset"] = "scierc"
+    sent_lengths = [len(x) for x in entry["sentences"]]
+    if min(sent_lengths) > 1:
+        out_data.append(entry)
 
-first_quarter = int(len(in_data) / 4)
-second_quarter = int(len(in_data) / 2)
-third_quarter = int((3 / 4) * len(in_data))
+first_quarter = int(len(out_data) / 4)
+second_quarter = int(len(out_data) / 2)
+third_quarter = int((3 / 4) * len(out_data))
 
-groups = {1: in_data[:first_quarter],
-          2: in_data[first_quarter:second_quarter],
-          3: in_data[second_quarter:third_quarter],
-          4: in_data[third_quarter:]}
+groups = {1: out_data[:first_quarter],
+          2: out_data[first_quarter:second_quarter],
+          3: out_data[second_quarter:third_quarter],
+          4: out_data[third_quarter:]}
 
 
 for name, group in groups.items():
