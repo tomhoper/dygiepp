@@ -14,7 +14,7 @@ def predict_shard(input_dict):
            "--include-package", "dygie",
            "--use-dataset-reader",
            "--output-file", f"results/predictions/{shard_id}-{model_name}.jsonl",
-           "--overrides", "{'dataset_reader' +: {'lazy': true}}",
+           "--overrides", "{'dataset_reader' +: {'cache_directory': null, 'lazy': true}}",
            "--cuda-device", str(shard_id - 1),
            "--silent"]
 
@@ -29,5 +29,6 @@ def predict_shard(input_dict):
 
 
 workers = multiprocessing.Pool(4)
-inputs = [{"shard_id": i + 1, "model_name": "scierc"} for i in range(4)]
-workers.map(predict_shard, inputs)
+for model_name in ["scierc", "genia-scierc"]:
+    inputs = [{"shard_id": i + 1, "model_name": model_name} for i in range(4)]
+    workers.map(predict_shard, inputs)
