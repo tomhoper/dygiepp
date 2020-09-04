@@ -1,6 +1,5 @@
 import subprocess
 import multiprocessing
-import os
 
 model_dir = "/data/dwadden/proj/dygie/dygiepp-new/models"
 
@@ -15,7 +14,9 @@ def predict_shard(input_dict):
            "--include-package", "dygie",
            "--use-dataset-reader",
            "--output-file", f"results/predictions/{shard_id}-{model_name}.jsonl",
-           "--cuda-device", str(shard_id - 1)]
+           "--overrides", "{'dataset_reader' +: {'lazy': true}}",
+           "--cuda-device", str(shard_id - 1),
+           "--silent"]
 
     stdout_file = f"log/stdout-{shard_id}-{model_name}.log"
     stderr_file = f"log/stderr-{shard_id}-{model_name}.log"
@@ -24,10 +25,9 @@ def predict_shard(input_dict):
             open(stderr_file, "w", buffering=1) as f_stderr:
         subprocess.run(cmd, stdout=f_stdout, stderr=f_stderr)
 
-
 ####################
 
-# os.rmdir("cache")
+
 workers = multiprocessing.Pool(4)
 inputs = [{"shard_id": i + 1, "model_name": "scierc"} for i in range(4)]
 workers.map(predict_shard, inputs)
