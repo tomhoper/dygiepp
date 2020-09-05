@@ -8,7 +8,13 @@ Convert Tom's event annotations to DyGIE format and train model on them.
   - Outputs: `data/processed/events.jsonl`
 - `02_split_and_collate.py`: Split into train / dev / test and collate.
   - Inputs: `data/processed/events.jsonl`
-
+- `train.sh`: Run training.
+  - Outputs: `models`
+- `evaluate.sh`: Run test set evaluation.
+  - Outputs: `results/metrics`
+- `03_check_folds.py`: The results are so good, I wanted to double-check that the folds are disjoint.
+- `04_collect_results.py`: Make a table.
+  - Outputs: `results/summary.tsv`.
 
 
 ## Annotation notes from Tom
