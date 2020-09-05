@@ -3,7 +3,7 @@ Convert Tom's event annotations to DyGIE format and train model on them.
 
 ## Experiment description
 
-- Preprocess Tom's event annotations as described in [annotation notse from Tom](#annotation-notes-from-tom)
+- Preprocess Tom's event annotations as described in [annotation notes from Tom](#annotation-notes-from-tom)
 - Split into train, dev, test.
 - Train event extraction model (using BioMedRoberta and PubMedBert).
 - Evaluate results.
