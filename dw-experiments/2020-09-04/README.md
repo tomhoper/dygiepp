@@ -3,8 +3,12 @@ Convert Tom's event annotations to DyGIE format and train model on them.
 ## Scripts
 
 - `01_convert.py`: Convert to our format.
-  - Inputs: The event annotations are copied from `allgood:/home/aida/covid_clean/dygiepp/bio_annotations/tom_event.jsonl`. I put them in `data`.
+  - Inputs: The event annotations are copied from `allgood:/home/aida/covid_clean/dygiepp/bio_annotations/tom_event.jsonl`. I put it in `data/raw`.
   - Notes: As per Tom's message,
+  - Outputs: `data/processed/events.jsonl`
+- `02_split_and_collate.py`: Split into train / dev / test and collate.
+  - Inputs: `data/processed/events.jsonl`
+
 
 
 ## Annotation notes from Tom

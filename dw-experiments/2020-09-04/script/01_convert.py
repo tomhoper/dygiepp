@@ -74,8 +74,8 @@ def process_entry(entry):
 
 ####################
 
-data = load_jsonl("data/tom_event.jsonl")
+data = load_jsonl("data/raw/tom_event.jsonl")
 MISSED = Counter()
 
 processed = [process_entry(entry) for entry in data]
-save_jsonl(processed, "results/events.jsonl")
+save_jsonl(processed, "data/processed/events.jsonl")
