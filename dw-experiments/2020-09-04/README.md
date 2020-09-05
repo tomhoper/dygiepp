@@ -1,5 +1,26 @@
 Convert Tom's event annotations to DyGIE format and train model on them.
 
+
+## Experiment description
+
+- Preprocess Tom's event annotations as described in [annotation notse from Tom](#annotation-notes-from-tom)
+- Split into train, dev, test.
+- Train event extraction model (using BioMedRoberta and PubMedBert).
+- Evaluate results.
+
+
+## Results
+
+|                      |   biomedroberta |   pubmedbert |
+|----------------------|-----------------|--------------|
+| trig_class_precision |          0.6442 |       0.6447 |
+| trig_class_recall    |          0.6700 |       0.6833 |
+| trig_class_f1        |          0.6569 |       0.6634 |
+| arg_class_precision  |          0.5504 |       0.5795 |
+| arg_class_recall     |          0.5034 |       0.5062 |
+| arg_class_f1         |          0.5259 |       0.5404 |
+
+
 ## Scripts
 
 - `01_convert.py`: Convert to our format.
@@ -14,7 +35,7 @@ Convert Tom's event annotations to DyGIE format and train model on them.
   - Outputs: `results/metrics`
 - `03_check_folds.py`: The results are so good, I wanted to double-check that the folds are disjoint.
 - `04_collect_results.py`: Make a table.
-  - Outputs: `results/summary.tsv`.
+  - Outputs: `results/summary.tsv`, `results/summary.md` (shown above).
 
 
 ## Annotation notes from Tom

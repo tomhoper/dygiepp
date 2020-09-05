@@ -4,6 +4,7 @@ Collect results into table.
 
 import pandas as pd
 import json
+from tabulate import tabulate
 
 
 in_dir = "results/metrics"
@@ -28,3 +29,8 @@ res = pd.DataFrame(res)
 res.index = [x.split("__")[1] for x in res.index]
 
 res.to_csv("results/summary.tsv", sep="\t", float_format="%0.4f")
+
+tabulated = tabulate(res, tablefmt="github", showindex=True, headers="keys",
+                     floatfmt="0.4f")
+with open("results/summary.md", "w") as f:
+    f.write(tabulated)
