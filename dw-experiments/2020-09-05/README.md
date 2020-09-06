@@ -1,4 +1,4 @@
-This is an exact copy of `2020-09-04`. The only change is the way the data are split; I use Aida's split instead of just doing one randomly myself. The input data are from `/data/aida/covid_aaai/UnifiedData/events_covid/mapped/mech_effect`. I put them in `data/raw/mech_effect`. I changed the extensions from `json` to `jsonl` to match what I have in the rest of the scripts.
+This is an exact copy of `2020-09-04`. The only change is the way the data are split; I use Aida's split instead of just doing one randomly myself. The input data are from `allgood:/data/aida/covid_aaai/UnifiedData/events_covid/mapped/mech_effect`. I put them in `data/raw/mech_effect`. I changed the extensions from `json` to `jsonl` to match what I have in the rest of the scripts.
 
 The numbers on the scripts are also decremented by 1, since we no longer need the first script to process the event data.
 
