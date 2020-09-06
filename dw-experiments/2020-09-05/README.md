@@ -8,20 +8,21 @@ The numbers on the scripts are also decremented by 1, since we no longer need th
 
 |       |   precision |   recall |     f1 |
 |-------|-------------|----------|--------|
-| train |      0.9337 |   0.8820 | 0.9071 |
-| dev   |      0.3498 |   0.2545 | 0.2946 |
-| test  |      0.2880 |   0.2097 | 0.2427 |
+| train |      0.8223 |   0.8465 | 0.8342 |
+| dev   |      0.2364 |   0.2319 | 0.2342 |
+| test  |      0.2800 |   0.2314 | 0.2534 |
 
 
 ## Results (ACE-style evaluation)
 
 **NOTE**: This is an overestimate of performance.
 
+
 |                      |   biomedroberta |   pubmedbert |
 |----------------------|-----------------|--------------|
-| trig_class_precision |          0.6442 |       0.6447 |
-| trig_class_recall    |          0.6700 |       0.6833 |
-| trig_class_f1        |          0.6569 |       0.6634 |
-| arg_class_precision  |          0.5504 |       0.5795 |
-| arg_class_recall     |          0.5034 |       0.5062 |
-| arg_class_f1         |          0.5259 |       0.5404 |
+| trig_class_precision |          0.6279 |       0.6265 |
+| trig_class_recall    |          0.7132 |       0.7660 |
+| trig_class_f1        |          0.6678 |       0.6893 |
+| arg_class_precision  |          0.6142 |       0.5856 |
+| arg_class_recall     |          0.4304 |       0.5968 |
+| arg_class_f1         |          0.5061 |       0.5911 |

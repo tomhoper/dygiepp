@@ -1,4 +1,5 @@
 import json
+import os
 
 from decode import decode
 
@@ -17,6 +18,8 @@ def save_jsonl(xs, fname):
 
 in_dir = "results/predictions/covid-event-pubmedbert/collated"
 out_dir = "results/predictions/covid-event-pubmedbert/decoded"
+
+os.makedirs(out_dir, exist_ok=True)
 
 for fold in ["train", "dev", "test"]:
     in_file = f"{in_dir}/{fold}.jsonl"
