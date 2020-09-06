@@ -229,6 +229,57 @@ def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, f
           return (arg0match or arg1match) and labels[0]==labels[1]
       return False
 
+def event_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False, coref_match=False):
+      #changing this so that it can check all the coref matches of args.
+      arg0match = False
+      arg1match = False
+      p1 = pair[0]
+      p2 = pair[1]
+
+      pair1_list_arg0 = [p1[0]]
+      pair1_list_arg1 = [p1[2]]
+      pair2_list_arg0 = [p2[0]]
+      pair2_list_arg1 = [p2[2]]
+      pair1_triggers = [str(labels[0])]
+      pair2_triggers = [str(labels[1])]
+
+      # if type(coref_rels) ==  pd.core.frame.DataFrame:
+      #   pair1_list_arg0 = read_coref_matches(pair1_list_arg0,coref_rels)
+      #   pair1_list_arg1 = read_coref_matches(pair1_list_arg1,coref_rels)
+      #   pair2_list_arg0 = read_coref_matches(pair2_list_arg0,coref_rels)
+      #   pair2_list_arg1 = read_coref_matches(pair2_list_arg1,coref_rels)
+
+      for pair1_arg0 in pair1_list_arg0:          
+        for pair1_arg1 in pair1_list_arg1:
+            for pair2_arg0 in pair2_list_arg0:
+                for pair2_arg1 in pair2_list_arg1:
+            
+                  if metric=="head":
+                      filter_stop = False
+                  if filter_stop:
+                    p1 = [filter_stopwords(p1[0].split()),filter_stopwords(p1[1].split())]
+                    p2 = [filter_stopwords(p2[0].split()),filter_stopwords(p2[1].split())]
+
+                  if span_matching(pair1_arg0,pair2_arg0,metric,thresh):
+                      arg0match = True
+                      if span_matching(pair1_arg1,pair2_arg1,metric,thresh):
+                          arg1match = True
+                          if labels[0]==labels[1] or span_matching(pair1_triggers[0],pair2_triggers[0],metric,thresh):
+                            return True
+                  # considering the reverse direction for evaluating relation
+                  if consider_reverse == True:
+                    if span_matching(pair1_arg0,pair2_arg1,metric,thresh):
+                      arg0match = True
+                      if span_matching(pair1_arg1,pair2_arg0,metric,thresh):
+                          arg1match = True
+                          if labels[0]==labels[1] or span_matching(pair1_triggers[0],pair2_triggers[0],metric,thresh):
+                            return True
+
+      if span_mode:
+          return (arg0match or arg1match) and labels[0]==labels[1]
+      return False
+
+
 def allpairs_base(golddf,pair_type="NNP",four_col=False):
     print("loading scispacy model for dep parse and NER...")
     #https://github.com/allenai/scispacy#available-models
@@ -704,6 +755,85 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
 
     F1 = 2*(precision * recall) / (precision + recall)
     return corr_pred, precision,recall, F1
+
+#########################################################################################
+def ie_eval_event(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=False, topK=None, consider_reverse=False):
+    goldrels = golddf[["id","arg0","trigger","arg1"]]#.drop_duplicates()
+    goldrels = goldrels.drop_duplicates(subset =["id","arg0","trigger","arg1"]).set_index("id")
+
+    if type(coref) ==pd.core.frame.DataFrame:
+        corefrels = coref.set_index("id")
+    predrels = relations[["id","arg0","trigger","arg1"]].set_index("id",inplace=False)
+
+    
+    # if transivity:
+    #     goldrels_trans = find_transivity_relations(goldrels)
+    #     predrels_trans = find_transivity_relations(predrels) 
+
+    good_preds = []
+    found_from_gold = []
+    seen_pred_gold = {}
+    if topK == None or topK > len(predrels)-1:
+        topK = len(predrels)
+    
+    predrels = predrels[:topK]
+    for i in predrels.index.unique():
+        if i in goldrels.index.unique():
+            gold = goldrels.loc[[i]]
+            coref_rels = None
+
+            if type(coref) == pd.core.frame.DataFrame and i in corefrels.index.unique():
+                print(i)
+                coref_rels = corefrels.loc[[i]]
+            if type(predrels.loc[i]) == pd.core.series.Series:
+                preds = [predrels.loc[i].values]
+            else:
+                preds = predrels.loc[i].values
+            c = list(itertools.product(gold.values, preds))
+            
+            for pair in c:
+                if collapse:
+                    labels = [1,1]
+                else:
+                    # import pdb; pdb.set_trace()
+                    labels = [pair[0][1],pair[1][1]]
+
+                m = event_matching(pair,metric=match_metric,labels=labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
+                #changing this so that it can check all the coref matches of args.if m and
+                if m and ((i,pair[0][0],pair[0][2],pair[1][0],pair[1][2]) not in seen_pred_gold):
+                    if len(pair[0][0]) == 1 or len(pair[1][0]) == 1:
+                    #     import pdb; pdb.set_trace()
+                        continue
+                    if [i,pair[1][0],pair[1][2]] not in good_preds:
+                        good_preds.append([i,pair[1][0],pair[1][1],pair[1][2]])
+                    if [i,pair[0][0],pair[0][1],pair[0][2]] not in found_from_gold:
+                        found_from_gold.append([i,pair[0][0],pair[0][1],pair[0][2]])
+                    seen_pred_gold[(i,pair[0][0],pair[0][1],pair[0][2],pair[1][0],pair[1][1],pair[1][2])]=1
+    
+                    
+    corr_pred = pd.DataFrame(good_preds,columns=["docid","arg0_gold","trig_gold","arg1_gold"])
+    corr_gold = pd.DataFrame(found_from_gold,columns=["docid","arg0_gold","trig_gold","arg1_gold"])
+    corr_pred = corr_pred.drop_duplicates()
+    corr_gold = corr_gold.drop_duplicates()
+    
+
+    TP = corr_pred.shape[0]
+    TP_for_recal = corr_gold.shape[0]
+    FP = topK - TP
+    FN = goldrels.shape[0] - TP_for_recal
+    if FN < 0: 
+        import pdb; pdb.set_trace()
+
+
+    precision = TP/(TP+FP)
+    recall = TP_for_recal/(FN+TP_for_recal)
+
+    F1 = 2*(precision * recall) / (precision + recall)
+    return corr_pred, precision,recall, F1
+
+
+#########################################################################################
+
 
 def ie_errors(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None):
     # import pdb; pdb.set_trace()
