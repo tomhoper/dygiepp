@@ -97,9 +97,9 @@ if __name__ == '__main__':
     random.shuffle(interset_ids)
     print(len(interset_ids))
     
-    output_file = open("human_annotations.jsonl", "w")
-    output_file_tsv = open("human_annotations.tsv", "w")
-    output_score_file = open("human_annotations_scores.tsv", "w")
+    output_file = open("human_annotations2.jsonl", "w")
+    output_file_tsv = open("human_annotations2.tsv", "w")
+    output_score_file = open("human_annotations_scores2.tsv", "w")
     score_headers = ['method', 'gold_0','gold_1','pred_0', 'pred_1', 'jaccard', 'rouge', 'substring']
     output_score_file.write('\t'.join(score_headers) + '\n')
     output_file_tsv.write("method\targ0\targ1\tid\ttext\n")

@@ -29,6 +29,8 @@ def calc_accept_rate_per_alg(data_list):
 def find_max_score(combo, metirc, consider_reverse, collapse):
     final_score = 0
     for pair in combo:
+      if pair[1][0] == "A sound clinician understanding of anatomic neck spaces and common etiologies of pediatric neck masses":
+        import pdb; pdb.set_trace()
       try:
         if len(pair[1][1]) == 1 or len(pair[0][0]) == 1:
           import pdb; pdb.set_trace()
@@ -37,8 +39,7 @@ def find_max_score(combo, metirc, consider_reverse, collapse):
 
       span0_score = eu.span_score(pair[0][0], pair[1][0],metric=metirc)
       span1_score = eu.span_score(pair[0][1], pair[1][1],metric=metirc)
-      # if span0_score  0  and span:
-        # import pdb; pdb.set_trace()
+
       if collapse:
         total_score = min(span0_score, span1_score)
       else:
@@ -181,13 +182,77 @@ def convert_to_tsv(input_filepath):
     docs = [json.loads(line) for line in open(input_filepath)]
     if "eval_sents_tom" in input_filepath:
       redo_docs = [json.loads(line) for line in open(PREDICTION_DIR + "eval_sents_tom_redo.jsonl")]
-      docs = redo_docs + docs[101:]
+      docs = redo_docs + docs[100:]
     for item in docs:
         arg0 = item['text'][item['relations'][0]['head_span']['start']:item['relations'][0]['head_span']['end']]
         arg1 = item['text'][item['relations'][0]['child_span']['start']:item['relations'][0]['child_span']['end']]
         label = item['relations'][0]['label']
         output_file.write(item["meta"]["doc_key"].split("__")[0] + '\t' + item["meta"]["doc_key"].split("__")[1] + \
           "\t" + arg0 + '\t' + arg1 + '\t' + label + '\t' + item['answer'] + '\t' + item['text'] + '\n')
+
+def write_from_score_tsv():
+  score_file = open("human_annotations_sentences_scores.tsv")
+  tsv_file_tom = open( PREDICTION_DIR + "eval_sents_tom" + '.tsv')
+  tsv_file_madeline = open( PREDICTION_DIR + "eval_sents_madeline_redo" + '.tsv')
+  output_file = open( PREDICTION_STATS + "eval_sents_final" + '.tsv', "w")
+  output_file.write("id\t" + "method\t" + "arg0\t" + 'arg1\t' + "answer_tom\t" + "answer_madeline")
+  for metric in ["rouge", "substring", "jaccard"]:
+          header = metric + "_reverse:True"  + "_collapse:True" 
+          output_file.write('\t' + header)
+  output_file.write("\n")
+  score_data = {}
+  tom_data = {}
+  madeline_data = {}
+  first_line = True
+  for line in score_file:
+    if first_line:
+      first_line = False
+      continue
+    score_line_parts = line[:-1].replace("\t ", "\t").lower().split("\t")
+    data = score_line_parts[:5]
+    # if "administrative actions" in line:
+      # import pdb; pdb.set_trace()
+    for i in range(5,8):
+      # import pdb; pdb.set_trace()
+      score_line_parts[i] = score_line_parts[i].replace("(", "").replace(")", "").split(", ")
+      data.append(min(float(score_line_parts[i][0]),float(score_line_parts[i][1])))
+    if (score_line_parts[3], score_line_parts[4]) not in score_data:
+      score_data[(score_line_parts[3], score_line_parts[4])] = data
+    else:
+      prev_data = score_data[(score_line_parts[3], score_line_parts[4])]
+
+      for i in range(5,8):
+
+        if data[i] < prev_data[i]:
+          data[i] = prev_data[i]
+      
+      score_data[(score_line_parts[3], score_line_parts[4])] = data
+
+
+  for line in tsv_file_tom:
+    score_line_parts = line[:-1].lower().split("\t")
+    tom_data[(score_line_parts[2], score_line_parts[3])] = score_line_parts
+  for line in tsv_file_madeline:
+    score_line_parts = line[:-1].lower().split("\t")
+    madeline_data[(score_line_parts[2], score_line_parts[3])] = score_line_parts
+  
+  for item in tom_data:
+    # if "by extraneous factors and administrative actions" in item:
+      # import pdb; pdb.set_trace()
+    if item not in madeline_data:
+      continue
+    
+
+    if item in score_data:
+      scores = score_data[item][5:8]
+    else:
+      scores = [0 for x in range(3)]
+    for i in range(3):
+      scores[i] = str(scores[i])
+    # import pdb; pdb.set_trace()
+    output_file.write('\t'.join(tom_data[item][0:4]) + '\t' + tom_data[item][5] + '\t' +madeline_data[item][5] + '\t' + '\t'.join(scores) + '\n')
+
+
 
 
 def read_data(input_filepath):
@@ -200,27 +265,27 @@ def read_data(input_filepath):
 
 if __name__ == '__main__':
     convert_to_tsv(PREDICTION_DIR + "eval_sents_tom.jsonl")
-    convert_to_tsv(PREDICTION_DIR + "eval_parts_tom.jsonl")
-    convert_to_tsv(PREDICTION_DIR + "eval_sents_madeline.jsonl")
-    convert_to_tsv(PREDICTION_DIR + "eval_parts_madeline.jsonl")
+    # convert_to_tsv(PREDICTION_DIR + "eval_parts_tom.jsonl")
+    convert_to_tsv(PREDICTION_DIR + "eval_sents_madeline_redo.jsonl")
+    # convert_to_tsv(PREDICTION_DIR + "eval_parts_madeline.jsonl")
 
     GOLD_SENT_PATH = pathlib.Path("/data/aida/covid_aaai/gold_madeline_sentences_matchcd/mech_effect/gold_par.tsv")
     GOLD_PART_PATH = pathlib.Path("/data/aida/covid_aaai/gold_madeline_final/mech_effect/gold_par.tsv")
-    
-    for file in ["eval_sents_tom", "eval_parts_tom", "eval_sents_madeline", "eval_parts_madeline"]:
-      print(file)
-      if "sents_" in file:
-        golddf = pd.read_csv(GOLD_SENT_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
-        golddf = golddf[golddf["y"]=="accept"]
-      if "parts_" in file:
-        golddf = pd.read_csv(GOLD_PART_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
-        golddf = golddf[golddf["y"]=="accept"]
+    write_from_score_tsv()
+    # for fil0in ["eval_sents_tom", "eval_parts_tom", "eval_sents_madeline", "eval_parts_madeline"]:
+    #   print(file)
+    #   if "sents_" in file:
+    #     golddf = pd.read_csv(GOLD_SENT_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
+    #     golddf = golddf[golddf["y"]=="accept"]
+    #   if "parts_" in file:
+    #     golddf = pd.read_csv(GOLD_PART_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
+    #     golddf = golddf[golddf["y"]=="accept"]
 
 
-      PREDS_PATH = pathlib.Path(PREDICTION_DIR + file + '.tsv')
-      print(PREDS_PATH)
-      predf = pd.read_csv(PREDS_PATH, sep="\t",names=["id","method","arg0","arg1","rel","answer","text"])
-      write_tsv_for_scores_per_alg(predf, golddf, PREDICTION_STATS + file + '.tsv')
+    #   PREDS_PATH = pathlib.Path(PREDICTION_DIR + file + '.tsv')
+    #   print(PREDS_PATH)
+    #   predf = pd.read_csv(PREDS_PATH, sep="\t",names=["id","method","arg0","arg1","rel","answer","text"])
+    #   write_tsv_for_scores_per_alg(predf, golddf, PREDICTION_STATS + file + '.tsv')
 
       # for metric in ["substring"]:
       #   for collapse in [True]:

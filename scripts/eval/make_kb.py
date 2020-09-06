@@ -102,13 +102,82 @@ def process_edge(item, arg0_rep, arg1_rep, weight):
   Global_graph.add_edge(node0, node1, weight, label=item[1], doc_id=item[0])
   import pdb; pdb.set_trace()
 
+def check_contains_refrence(word):
+  refrence_words = ["they", "it", "these", "those", "that", "this"]
+  word_parts = word.split()
+  for part in word_parts:
+    if part in refrence_words:
+      return True
+  return False
+
+
+def read_coref_file(coref_file_path):
+  res = {}
+  input_file = open(coref_file_path)
+  for line in input_file:
+    contains_refrence = False
+    line_parts = line[:-1].split("\t")
+    doc_id = line_parts[0]
+    if doc_id not in res:
+      res[doc_id ] = []
+    new_row = []
+    new_row.append({"text": line_parts[2]})
+    if check_contains_refrence(line_parts[2]):
+        contains_refrence = True
+
+    for i in range(3, len(line_parts)):
+      new_coref = {}
+      item_parts = line_parts[i].split("|")
+      if check_contains_refrence(item_parts[0]):
+        contains_refrence = True
+      new_coref = {"text": item_parts[0], "start": item_parts[1], "end": item_parts[2]}
+      new_row.append(new_coref)
+    if contains_refrence:
+      res[doc_id].append(new_row)
+  return res
+
+def replace_coref_span(span, text, doc_coref_data):
+  for coref_doc in doc_coref_data:
+    for i in range(1, len(coref_doc)):
+      # import pdb; pdb.set_trace()
+      if coref_doc[i]["text"] in span and check_contains_refrence(coref_doc[i]["text"]) == True:
+        print(span + "\t" + coref_doc[i]["text"] + "\t" + coref_doc[0]["text"])
+        return span.replace(coref_doc[i]["text"], coref_doc[0]["text"])
+  return span
+
+def replace_coref(input_filepath, output_filepath, coref_path):
+  coref_data = read_coref_file(coref_path)
+  print(len(coref_data))
+  input_file = open(input_filepath)
+  output_file = open(output_filepath, "w")
+  for line in input_file:
+
+    line_parts = line[:-1].split("\t")
+    # import pdb; pdb.set_trace()
+    # if line_parts[0] in coref_data:
+    #   print( line_parts[0] in coref_data)
+    if check_contains_refrence(line_parts[2]) == False and check_contains_refrence(line_parts[3]) == False or line_parts[0] not in coref_data:
+      output_file.write(line)
+      continue
+    if check_contains_refrence(line_parts[2]) == True:
+      doc_coref_data = coref_data[line_parts[0]]
+      line_parts[2] = replace_coref_span(line_parts[2], line_parts[1], doc_coref_data)
+
+    if check_contains_refrence(line_parts[3]) == True:
+      doc_coref_data = coref_data[line_parts[0]]
+      line_parts[3] = replace_coref_span(line_parts[3], line_parts[1], doc_coref_data)
+
+    arg0_rep = get_representation_string(line_parts[2])
+    arg1_rep = get_representation_string(line_parts[3])
+    output_file.write("\t".join(line_parts[:4]) +'\t' + arg0_rep + '\t' + arg1_rep+ '\t' + line_parts[7]+ '\n')
+
 
 def read_merge_predictions():
   relation_seen_count = {}
   span_seen_count = {}
   errors_filepath = open("not_complete.txt", "w")
   output_file = open("complete_KB.tsv", "w")
-  output_file.write("doc_id\tsentence\tspan1\tspan2\trelation_tag\tspan1_lemma\tspan2_lemma\n")
+  output_file.write("doc_id\tsentence\tspan1\tspan2\trelation_tag\tspan1_lemma\tspan2_lemma\tconf\n")
   file_names = glob(PRED_DIR+"/*.jsonl")
   count = 0
   for name in file_names:
@@ -123,8 +192,9 @@ def read_merge_predictions():
     for item in pred_rels:
       arg0_rep = get_representation_string(item[2])
       arg1_rep = get_representation_string(item[3])
+      # import pdb; pdb.set_trace()
       # process_edge(item, arg0_rep, arg1_rep, pred_rels[item])
-      output_file.write(item[0] + '\t' + item[1] + '\t' + item[2] + '\t' + item[3] + '\t' + item[4] + '\t' + arg0_rep + '\t' + arg1_rep + '\n')
+      output_file.write(item[0] + '\t' + item[1] + '\t' + item[2] + '\t' + item[3] + '\t' + item[4] + '\t' + arg0_rep + '\t' + arg1_rep + '\t' + str(pred_rels[item]) + '\n')
       if arg0_rep not in span_seen_count:
         span_seen_count[arg0_rep] = 1
       else:
@@ -151,7 +221,8 @@ def read_merge_predictions():
 
 if __name__ == "__main__":
   # parition_eval_procedure()
-    read_merge_predictions()
+    replace_coref("complete_KB.tsv", "complete_KB_coref.tsv", "/data/dave/proj/for-aida/coref-predictions-2020-09-04/unlabeled/merged.tsv")
+    # read_merge_predictions()
 
 
 
