@@ -6,7 +6,7 @@ import subprocess
 from typing import Any, Dict
 import sys
 import pandas as pd
-from eval_utils import depparse_base, allpairs_base, get_openie_predictor,get_srl_predictor,allenlp_base_relations, ie_eval, ie_span_eval, ie_errors
+from eval_utils import read_coref_file, depparse_base, allpairs_base, get_openie_predictor,get_srl_predictor,allenlp_base_relations, ie_eval, ie_span_eval, ie_errors
 import pathlib
 from pathlib import Path
 import pandas as pd
@@ -64,7 +64,9 @@ if __name__ == '__main__':
 
     stat_path.mkdir(parents=True, exist_ok=True)
 
-
+    coref_path = "/data/dave/proj/for-aida/coref-predictions-2020-09-04/gold/merged.tsv"
+    coref = read_coref_file(coref_path)
+    
     GOLD_PATH = pathlib.Path(gold_path)
     PREDS_PATH = pathlib.Path(pred_dir)
     golddf = pd.read_csv(GOLD_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
@@ -98,6 +100,7 @@ if __name__ == '__main__':
     
     #get results
     res_list = []
+    res_latex_list = []
     res_span_list = []
 
     for k,v in prediction_dict.items():
@@ -117,16 +120,19 @@ if __name__ == '__main__':
                 for collapse in collapse_opt:
                     th_opts = [1]
                     if match_metric == "rouge":
-                        th_opts=[0.5]
+                        th_opts=[0.3]
                     if match_metric == 'jaccard':
-                        th_opts = [0.3, 0.5]
+                        th_opts = [0.3]
                     for th in th_opts:
 
                         p_at_k = []
-                        k_th = [100, 150, 200]
+                        k_th = [100, 150, 200, 50]
                         # p_at_k = [100, 150, 200]
                         for topK in k_th:
-                            _, p, _, _ = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK,consider_reverse=consider_reverse)
+                            if "covid" not in k :
+                                p_at_k.append(0)
+                                continue
+                            _, p, _, _ = ie_eval(v,golddf,coref=coref,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK,consider_reverse=consider_reverse)
                             p_at_k.append(p)
                         # # if match_metric == "substring" and collapse == False:
                         #     print("hereeee")
@@ -134,12 +140,21 @@ if __name__ == '__main__':
                         # if match_metric == "substring" and collapse == True:
                             # print("hereeee")
                             # errors_collapse = ie_errors(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th)
-                        
-                        corr_pred, precision,recall, F1 = ie_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=consider_reverse)
+                        try:
+                            corr_pred, precision,recall, F1 = ie_eval(v,golddf,coref=coref,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=consider_reverse)
+                        except:
+                                precision = 0
+                                recall = 0
+                                F1 = 0
+                                corr_pred= []
                         span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
-                        res = [k, round(precision,2), round(recall,2), round(F1,2), round(p_at_k[0],2),round(p_at_k[1],2),round(p_at_k[2],2), round(span_precision, 2), round(span_recall, 2), round(span_F1, 2), mech_effect, collapse, match_metric, th, consider_reverse]
+                        res = [k, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4), 100*round(p_at_k[0],4),100*round(p_at_k[1],4),100*round(p_at_k[2],4), 100*round(span_precision, 4), 100*round(span_recall, 4), 100*round(span_F1, 4), mech_effect, collapse, match_metric, th, consider_reverse]
+                        if collapse == True and consider_reverse == True:
+                            res_latex = [k, match_metric, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4), 100*round(p_at_k[3],4),100*round(p_at_k[0],4), 100*round(span_precision, 4), 100*round(span_recall, 4), 100*round(span_F1, 4)]
+                            res_latex_list.append(res_latex)
                         res_span = [k, span_precision, span_recall, span_F1, match_metric, th]
                         res_list.append(res)
+                        
                         res_span_list.append(res_span)
                         # print('model: {0} collapsed: {1} metric: {2} accept_reverse: {15} precision:{3} recall {4} f1: {5} P@{12}: {6} P@{13}: {7} P@{14}: {8} span_presicion: {9} span_recall: {10} span_F1: {11}'.format(k, collapse, match_metric, round(precision,2) ,round(recall,2), round(F1,2), round(p_at_k[0],2),round(p_at_k[1],2),round(p_at_k[2],2), round(span_precision,2),round(span_recall,2), round(span_F1,2), k_th[0], k_th[1], k_th[2], consider_reverse))
 
@@ -148,7 +163,9 @@ if __name__ == '__main__':
     print ("****")
 
     stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","P@100","P@150","P@200","span_P","span_R","span_F1","mech_effect_mode","collapse","match_mettric","threshold", "consider_reverse"])
+    stats_df_latex = pd.DataFrame(res_latex_list,columns =["model","match_metric","P","R","F1","P@50","P@100","span_P","span_R","span_F1"])
     stats_path = stat_path / 'stats.tsv'
+    print(str(stats_df_latex.to_latex()))
     stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
 
     # errors_path = stat_path / 'errors_non_collapse.tsv'

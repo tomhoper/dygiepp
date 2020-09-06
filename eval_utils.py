@@ -13,8 +13,17 @@ spacy_nlp = spacy.load('en_core_web_sm')
 spacy_stopwords = spacy.lang.en.stop_words.STOP_WORDS
 nlp = spacy.load("en_core_sci_sm")
 
+
 from rouge import Rouge 
 rouge = Rouge()
+
+def check_contains_refrence(word):
+  refrence_words = ["they", "it", "these", "those", "that", "this"]
+  word_parts = word.split()
+  for part in word_parts:
+    if part in refrence_words:
+      return True
+  return False
 
 
 def get_relation_scores(preds, gold, metric_list):
@@ -62,10 +71,6 @@ def jaccard_similarity(list1, list2):
 
     s1 = set(list1)
     s2 = set(list2)
-    # print(type(list1))
-    # print(type(list2))
-    # print (s1)
-    # print (s2)
     return len(s1.intersection(s2)) / len(s1.union(s2))
 
 def exact_match(span1, span2):
@@ -74,7 +79,30 @@ def exact_match(span1, span2):
 def filter_stopwords(tokens):
     return " ".join([t for t in tokens if t.lower() not in spacy_stopwords])
 
+def read_coref_file(coref_file_path):
+  res = []
+  input_file = open(coref_file_path)
+  for line in input_file:
+    new_row = []
+    contains_refrence = False
+    line_parts = line[:-1].split("\t")
+    
+    new_row.append(line_parts[0] + "_abstract")
+    for i in range(3, len(line_parts)):
 
+      item_parts = line_parts[i].split("|")
+      if check_contains_refrence(item_parts[0]):
+        contains_refrence = True
+      if len(new_row) < 10:
+          new_row.append(item_parts[0])
+
+    while len(new_row) < 10:
+        new_row.append("==")
+    res.append(new_row)
+
+  res_df = pd.DataFrame(res,columns =["id","arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8"])
+
+  return res_df
 
 def span_matching(span1,span2,metric,thresh=None):
     match = False
@@ -129,19 +157,23 @@ def span_score(span1,span2,metric):
         else:
             return 0
 
-def convert_coref_json_to_tsv(file_path):
-    input_file = open(file_path)
-    for line in input_file:
-        data = json.loads(line)
-        import pdb; pdb.set_trace()
 
 def read_coref_matches(word_list, coref_rels):
-    #TODO
+    # import pdb; pdb.set_trace()
     for row in coref_rels.iterrows():
-        if row[1]['arg0'] == word_list[0]:
-            word_list.append(row[1]['arg1'])
-        if row[1]['arg1'] == word_list[0]:
-            word_list.append(row[1]['arg0'])
+        match_index = -1
+        for i in range(9):
+            if row[1]['arg' + str(i)] == word_list[0] or row[1]['arg' + str(i)] in word_list[0]:
+                match_index = i
+        if match_index > 0:
+          for i in range(9):
+            if i == match_index:
+                continue
+            if row[1]['arg' + str(i)] == "==":
+                break
+            word_list.append(word_list[0].replace(row[1]['arg' + str(match_index)],row[1]['arg' + str(i)]))
+            print(row[1]['arg' + str(i)])
+          
     return word_list
 
 def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False, coref_match=False):
@@ -158,18 +190,20 @@ def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, f
       pair1_list_arg1 = [p1[1]]
       pair2_list_arg0 = [p2[0]]
       pair2_list_arg1 = [p2[1]]
-      if coref_match:
-        pair1_list_arg0 = read_coref_matches(pair1_list_arg0)
-        pair1_list_arg1 = read_coref_matches(pair1_list_arg1)
-        pair2_list_arg0 = read_coref_matches(pair2_list_arg0)
-        pair2_list_arg1 = read_coref_matches(pair2_list_arg1)
+      if type(coref_rels) ==  pd.core.frame.DataFrame:
+        pair1_list_arg0 = read_coref_matches(pair1_list_arg0,coref_rels)
+        pair1_list_arg1 = read_coref_matches(pair1_list_arg1,coref_rels)
+        pair2_list_arg0 = read_coref_matches(pair2_list_arg0,coref_rels)
+        pair2_list_arg1 = read_coref_matches(pair2_list_arg1,coref_rels)
 
       for pair1_arg0 in pair1_list_arg0:
+        if pair1_list_arg0.index(pair1_arg0) > 0 and pair1_list_arg0.index(pair1_arg0) == len(pair1_list_arg0)-1 and pair[0][0] != 'Coronavirus 3C - like protease ( 3CLpro )':
+            import pdb; pdb.set_trace()
+                  
         for pair1_arg1 in pair1_list_arg1:
             for pair2_arg0 in pair2_list_arg0:
                 for pair2_arg1 in pair2_list_arg1:
             
-
                   if metric=="head":
                       filter_stop = False
                   if filter_stop:
@@ -566,7 +600,8 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
 
-    if coref != None:
+    # import pdb; pdb.set_trace()
+    if type(coref) ==pd.core.frame.DataFrame:
         corefrels = coref.set_index("id")
     #only get rel for our model / gold, otherwise assume one collapsed label
     if "conf" in relations.columns:
@@ -575,7 +610,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
         # if topK != None:
         #     predrels = predrels[:topK]
     else:
-        predrels = relations[["id","arg0","arg1", "rel"]].set_index("id",inplace=False)
+        predrels = relations[["id","arg0","arg1"]].set_index("id",inplace=False)
 
     
     if transivity:
@@ -593,8 +628,10 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
         if i in goldrels_trans.index.unique():
             gold = goldrels_trans.loc[[i]]
             coref_rels = None
-            if coref != None:
-                coref_rels = corefrels.loc[i]
+
+            if type(coref) == pd.core.frame.DataFrame and i in corefrels.index.unique():
+                print(i)
+                coref_rels = corefrels.loc[[i]]
             if type(predrels.loc[i]) == pd.core.series.Series:
                 preds = [predrels.loc[i].values]
             else:
@@ -607,7 +644,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                     # import pdb; pdb.set_trace()
                     labels = [pair[0][2],pair[1][2]]
 
-                m = relation_matching(pair,metric=match_metric, labels = labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
+                m = relation_matching(pair,metric=match_metric,labels=labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
                 #changing this so that it can check all the coref matches of args.if m and
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     if len(pair[0][0]) == 1:
@@ -622,9 +659,9 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
     for i in predrels.index.unique():
         if i in goldrels.index.unique():
             gold = goldrels.loc[[i]]
-            coref_rels = None
-            if coref != None:
-                coref_rels = corefrels.loc[i]
+            coref_rels= None
+            if type(coref) == pd.core.frame.DataFrame and i in corefrels.index.unique():
+                coref_rels = corefrels.loc[[i]]
             if type(predrels.loc[i]) == pd.core.series.Series:
                 preds = [predrels.loc[i].values]
             else:
@@ -702,7 +739,7 @@ def ie_errors(relations, golddf, coref=None, collapse = False, match_metric="sub
             gold_text_id = gold_id_text.loc[[i]]
             coref_rels = None
             if coref != None:
-                coref_rels = corefrels.loc[i]
+                coref_rels = corefrels.loc[[i]]
             if type(predrels.loc[i]) == pd.core.series.Series:
                 preds = [predrels.loc[i].values]
             else:
