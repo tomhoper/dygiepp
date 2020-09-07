@@ -11,10 +11,11 @@ import pathlib
 from pathlib import Path
 import pandas as pd
 from tabulate import tabulate
+
 """
 Usage:
-python eval_metric.py --root ../coviddata --data_combo scierc_chemprot_srl 
-python eval_metric.py --root ../coviddata --data_combo scierc_chemprot_srl --mech_effect_mode
+conda activate /home/aida/miniconda3/envs/covid_eval
+python eval_metric.py --root ../covid_aaai/ --data_combo covid_anno_par_madeline_sentences_matchcd --mech_effect_mode --gold_combo gold_madeline_sentences_matchcd --open 
 """
 
 if __name__ == '__main__':
@@ -39,6 +40,9 @@ if __name__ == '__main__':
                         required=True)
 
     parser.add_argument('--mech_effect_mode',
+                        action='store_true')
+
+    parser.add_argument('--open',
                         action='store_true')
 
     # parser.add_argument('--pred',
@@ -91,12 +95,18 @@ if __name__ == '__main__':
 
 
     # get SRL relations and openIE relations, place in prediction_dict
-    # predictor_ie = get_openie_predictor()
-    # predictor_srl = get_srl_predictor()
-    # srl_relations = allenlp_base_relations(predictor_srl,golddf)
-    # ie_relations = allenlp_base_relations(predictor_ie,golddf)
-    # prediction_dict["srl"] = pd.DataFrame(srl_relations,columns=["id","arg0","arg1"])
-    # prediction_dict["openie"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
+    if args.open:
+        #predictor_ie = get_openie_predictor()
+        predictor_srl = get_srl_predictor()
+        use_collapse = False
+        srl_relations = allenlp_base_relations(predictor_srl,golddf,filter_biosrl=False,collapse=use_collapse)
+        #ie_relations = allenlp_base_relations(predictor_ie,golddf,filter_biosrl=False,collapse=use_collapse)
+        if use_collapse:
+            prediction_dict["srl"] = pd.DataFrame(srl_relations,columns=["id","arg0","arg1"])
+        else:
+            prediction_dict["srl"] = pd.DataFrame(srl_relations,columns=["id","arg0","arg1","rel","conf"])
+        #print(prediction_dict["srl"])
+        #prediction_dict["openie"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
     
     #get results
     res_list = []
@@ -129,7 +139,7 @@ if __name__ == '__main__':
                         k_th = [100, 150, 200, 50]
                         # p_at_k = [100, 150, 200]
                         for topK in k_th:
-                            if "covid" not in k :
+                            if "covid" not in k:
                                 p_at_k.append(0)
                                 continue
                             _, p, _, _ = ie_eval(v,golddf,coref=coref,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,topK=topK,consider_reverse=consider_reverse)
