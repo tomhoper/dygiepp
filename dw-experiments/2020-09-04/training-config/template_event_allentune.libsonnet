@@ -1,9 +1,4 @@
 {
-  local DROPOUT = std.parseJson(std.extVar("DROPOUT")),
-  local LEARNING_RATE = std.parseJson(std.extVar("LEARNING_RATE")),
-  local HIDDEN_SIZE = std.parseInt(std.extVar("HIDDEN_SIZE")),
-  local master_port = 5555,
-
   DyGIE: {
     local dygie = self,
 
@@ -11,8 +6,8 @@
     local validation_metrics = {
       'ner': '+MEAN__ner_f1',
       'relation': '+MEAN__relation_f1',
-      'coref': '+MEAN__coref_f1',
-      'events': '+arg_class_f1'
+      'coref': '+coref_f1',
+      'events': '+MEAN__arg_class_f1'
     },
 
     ////////////////////
@@ -34,7 +29,7 @@
     // If using a different BERT, this number may be different. It's up to the user to set the
     // appropriate value.
     max_wordpieces_per_sentence :: 512,
-    max_span_width :: 12,
+    max_span_width :: 8,
     cuda_device :: -1,
 
     ////////////////////
@@ -53,12 +48,11 @@
           max_length: dygie.max_wordpieces_per_sentence
         },
       },
-      max_span_width: dygie.max_span_width,
-      cache_directory: 'cache',
+      max_span_width: dygie.max_span_width
     },
-    train_data_path: std.extVar("ie_train_data_path"),
-    validation_data_path: std.extVar("ie_dev_data_path"),
-    test_data_path: std.extVar("ie_test_data_path"),
+    train_data_path: dygie.data_paths.train,
+    validation_data_path: dygie.data_paths.validation,
+    test_data_path: dygie.data_paths.test,
     // If provided, use pre-defined vocabulary. Else compute on the fly.
     model: {
       type: 'dygie',
@@ -88,8 +82,8 @@
       target_task: dygie.target_task,
       feedforward_params: {
         num_layers: 2,
-        hidden_dims: HIDDEN_SIZE,
-        dropout: DROPOUT,
+        hidden_dims: 150,
+        dropout: 0.4,
       },
       modules: {
         coref: {
@@ -112,27 +106,21 @@
       },
     },
     data_loader: {
-      type: 'ie_batch',
-      batch_size: 1,
-    },
-
-
-    distributed: {
-      "cuda_devices": [1,2,3],
-      "master_port": std.parseInt(std.extVar("master_port"))
+      sampler: {
+        type: "random",
+      }
     },
     trainer: {
-      "distributed": true,
-
       checkpointer: {
         num_serialized_models_to_keep: 3,
       },
-      num_epochs: 100,
+      num_epochs: 50,
       grad_norm: 5.0,
+      cuda_device: dygie.cuda_device,
       validation_metric: validation_metrics[dygie.target_task],
       optimizer: {
         type: 'adamw',
-        lr: LEARNING_RATE,
+        lr: 1e-3,
         weight_decay: 0.0,
         parameter_groups: [
           [

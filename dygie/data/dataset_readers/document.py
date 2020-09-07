@@ -1,10 +1,22 @@
+from abc import ABC
+
 from dygie.models.shared import fields_to_batches, batches_to_fields
 import copy
 import numpy as np
+import re
+import json
 
 
 def format_float(x):
     return round(x, 4)
+
+
+class EmptyStringError(ValueError):
+    pass
+
+
+class SpanCrossesSentencesError(ValueError):
+    pass
 
 
 def get_sentence_of_span(span, sentence_starts, doc_tokens):
@@ -15,7 +27,8 @@ def get_sentence_of_span(span, sentence_starts, doc_tokens):
     sentence_ends = [x - 1 for x in sentence_starts[1:]] + [doc_tokens - 1]
     in_between = [span[0] >= start and span[1] <= end
                   for start, end in zip(sentence_starts, sentence_ends)]
-    assert sum(in_between) == 1
+    if sum(in_between) != 1:
+        raise SpanCrossesSentencesError
     the_sentence = in_between.index(True)
     return the_sentence
 
@@ -36,19 +49,67 @@ def update_sentences_with_clusters(sentences, clusters):
     return sentences
 
 
+class Dataset:
+    def __init__(self, documents):
+        self.documents = documents
+
+    def __getitem__(self, i):
+        return self.documents[i]
+
+    def __len__(self):
+        return len(self.documents)
+
+    def __repr__(self):
+        return f"Dataset with {self.__len__()} documents."
+
+    @classmethod
+    def from_jsonl(cls, fname):
+        """
+        Load from jsonl file. If documents with empty strings are found, record and keep out of
+        dataset.
+        """
+        documents = []
+        docs_with_empty_strings = []
+        with open(fname, "r") as f:
+            for line in f:
+                try:
+                    doc = Document.from_json(json.loads(line))
+                    documents.append(doc)
+                except EmptyStringError:
+                    docs_with_empty_strings.append(json.loads(line)["doc_key"])
+
+        if docs_with_empty_strings:
+            missed = ", ".join(docs_with_empty_strings)
+            msg = f"These documents were not loaded in because they contain empty strings: {missed}."
+            print(msg)
+
+        return cls(documents)
+
+    def to_jsonl(self, fname):
+        to_write = [doc.to_json() for doc in self]
+        with open(fname, "w") as f:
+            for entry in to_write:
+                print(json.dumps(entry), file=f)
+
+
 class Document:
-    def __init__(self, doc_key, dataset, sentences, clusters):
+    def __init__(self, doc_key, dataset, sentences,
+                 clusters=None, predicted_clusters=None, weight=None):
         self.doc_key = doc_key
         self.dataset = dataset
         self.sentences = sentences
         self.clusters = clusters
+        self.predicted_clusters = predicted_clusters
+        self.weight = weight
 
     @classmethod
     def from_json(cls, js):
         "Read in from json-loaded dict."
+        cls._check_fields(js)
+        cls._check_empty_strings(js)
         doc_key = js["doc_key"]
         dataset = js.get("dataset")
-        entries = fields_to_batches(js, ["doc_key", "dataset", "clusters", "section"])
+        entries = fields_to_batches(js, ["doc_key", "dataset", "clusters", "predicted_clusters", "weight"])
         sentence_lengths = [len(entry["sentences"]) for entry in entries]
         sentence_starts = np.cumsum(sentence_lengths)
         sentence_starts = np.roll(sentence_starts, 1)
@@ -63,11 +124,45 @@ class Document:
                         for i, entry in enumerate(js["clusters"])]
         else:
             clusters = None
+        # TODO(dwadden) Need to treat predicted clusters differently and update sentences
+        # appropriately.
+        if "predicted_clusters" in js:
+            predicted_clusters = [Cluster(entry, i, sentences, sentence_starts)
+                                  for i, entry in enumerate(js["predicted_clusters"])]
+        else:
+            predicted_clusters = None
 
         # Update the sentences with coreference cluster labels.
         sentences = update_sentences_with_clusters(sentences, clusters)
 
-        return cls(doc_key, dataset, sentences, clusters)
+        # Get the loss weight for this document.
+        weight = js.get("weight", None)
+
+        return cls(doc_key, dataset, sentences, clusters, predicted_clusters, weight)
+
+    @staticmethod
+    def _check_fields(js):
+        "Make sure we only have allowed fields."
+        allowed_field_regex = ("doc_key|dataset|sentences|weight|.*ner$|"
+                               ".*relations$|.*clusters$|.*events$|^_.*")
+        allowed_field_regex = re.compile(allowed_field_regex)
+        unexpected = []
+        for field in js.keys():
+            if not allowed_field_regex.match(field):
+                unexpected.append(field)
+
+        if unexpected:
+            msg = f"The following unexpected fields should be prefixed with an underscore: {', '.join(unexpected)}."
+            raise ValueError(msg)
+
+    @staticmethod
+    def _check_empty_strings(js):
+        "Check for empty strings in the input sentences, and thow an error if found."
+        for sent in js["sentences"]:
+            for word in sent:
+                if word == "":
+                    msg = f"Empty string found in document {js['doc_key']}."
+                    raise EmptyStringError(msg)
 
     def to_json(self):
         "Write to json dict."
@@ -78,9 +173,10 @@ class Document:
         res.update(fields_json)
         if self.clusters is not None:
             res["clusters"] = [cluster.to_json() for cluster in self.clusters]
-        # TODO(dwadden) Don't use hasattr.
-        if hasattr(self, "predicted_clusters"):
+        if self.predicted_clusters is not None:
             res["predicted_clusters"] = [cluster.to_json() for cluster in self.predicted_clusters]
+        if self.weight is not None:
+            res["weight"] = self.weight
 
         return res
 
@@ -88,11 +184,11 @@ class Document:
     def split(self, max_tokens_per_doc):
         """
         Greedily split a long document into smaller documents, each shorter than
-        `max_tokens_per_doc`
+        `max_tokens_per_doc`. Each split document will get the same weight as its parent.
         """
         # TODO(dwadden) Implement splitting when there's coref annotations. This is more difficult
         # because coreference clusters have to be split across documents.
-        if self.clusters is not None:
+        if self.clusters is not None or self.predicted_clusters is not None:
             raise NotImplementedError("Splitting documents with coreference annotations not implemented.")
 
         # If the document is already short enough, return it as a list with a single item.
@@ -133,7 +229,8 @@ class Document:
 
         # Create a separate document for each sentence group.
         doc_keys = [f"{self.doc_key}_SPLIT_{i}" for i in range(len(sentence_groups))]
-        res = [self.__class__(doc_key, self.dataset, sentence_group, self.clusters)
+        res = [self.__class__(doc_key, self.dataset, sentence_group,
+                              self.clusters, self.predicted_clusters, self.weight)
                for doc_key, sentence_group in zip(doc_keys, sentence_groups)]
 
         return res
@@ -178,6 +275,9 @@ class Sentence:
         self.sentence_ix = sentence_ix
         self.text = entry["sentences"]
 
+        # Metadata fields are prefixed with a `_`.
+        self.metadata = {k: v for k, v in entry.items() if re.match("^_", k)}
+
         # Store events.
         if "ner" in entry:
             self.ner = [NER(this_ner, self)
@@ -191,6 +291,8 @@ class Sentence:
         if "predicted_ner" in entry:
             self.predicted_ner = [PredictedNER(this_ner, self)
                                   for this_ner in entry["predicted_ner"]]
+        else:
+            self.predicted_ner = None
 
         # Store relations.
         if "relations" in entry:
@@ -209,6 +311,8 @@ class Sentence:
         if "predicted_relations" in entry:
             self.predicted_relations = [PredictedRelation(this_relation, self) for
                                         this_relation in entry["predicted_relations"]]
+        else:
+            self.predicted_relations = None
 
         # Store events.
         if "events" in entry:
@@ -216,21 +320,29 @@ class Sentence:
         else:
             self.events = None
 
+        # Predicted events.
+        if "predicted_events" in entry:
+            self.predicted_events = PredictedEvents(entry["predicted_events"], self)
+        else:
+            self.predicted_events = None
+
     def to_json(self):
         res = {"sentences": self.text}
         if self.ner is not None:
             res["ner"] = [entry.to_json() for entry in self.ner]
-        # TODO(dwadden) Don't treat predicted and gold data differently.
-        if hasattr(self, "predicted_ner"):
+        if self.predicted_ner is not None:
             res["predicted_ner"] = [entry.to_json() for entry in self.predicted_ner]
         if self.relations is not None:
             res["relations"] = [entry.to_json() for entry in self.relations]
-        if hasattr(self, "predicted_relations"):
+        if self.predicted_relations is not None:
             res["predicted_relations"] = [entry.to_json() for entry in self.predicted_relations]
         if self.events is not None:
             res["events"] = self.events.to_json()
-        if hasattr(self, "predicted_events"):
+        if self.predicted_events is not None:
             res["predicted_events"] = self.predicted_events.to_json()
+
+        for k, v in self.metadata.items():
+            res[k] = v
 
         return res
 
@@ -310,18 +422,36 @@ class Token:
 
 
 class Trigger:
-    def __init__(self, token, label):
+    def __init__(self, trig, sentence, sentence_offsets):
+        token = Token(trig[0], sentence, sentence_offsets)
+        label = trig[1]
         self.token = token
         self.label = label
 
     def __repr__(self):
         return self.token.__repr__()[:-1] + ", " + self.label + ")"
 
+    def to_json(self):
+        return [self.token.ix_doc, self.label]
+
+
+class PredictedTrigger(Trigger):
+    def __init__(self, trig, sentence, sentence_offsets):
+        super().__init__(trig, sentence, sentence_offsets)
+        self.raw_score = trig[2]
+        self.softmax_score = trig[3]
+
+    def __repr__(self):
+        return super().__repr__() + f" with confidence {self.softmax_score:0.4f}"
+
+    def to_json(self):
+        return super().to_json() + [format_float(self.raw_score), format_float(self.softmax_score)]
+
 
 class Argument:
-    def __init__(self, span, role, event_type):
-        self.span = span
-        self.role = role
+    def __init__(self, arg, event_type, sentence, sentence_offsets):
+        self.span = Span(arg[0], arg[1], sentence, sentence_offsets)
+        self.role = arg[2]
         self.event_type = event_type
 
     def __repr__(self):
@@ -334,6 +464,22 @@ class Argument:
 
     def __hash__(self):
         return self.span.__hash__() + hash((self.role, self.event_type))
+
+    def to_json(self):
+        return list(self.span.span_doc) + [self.role]
+
+
+class PredictedArgument(Argument):
+    def __init__(self, arg, event_type, sentence, sentence_offsets):
+        super().__init__(arg, event_type, sentence, sentence_offsets)
+        self.raw_score = arg[3]
+        self.softmax_score = arg[4]
+
+    def __repr__(self):
+        return super().__repr__() + f" with confidence {self.softmax_score:0.4f}"
+
+    def to_json(self):
+        return super().to_json() + [format_float(self.raw_score), format_float(self.softmax_score)]
 
 
 class NER:
@@ -352,20 +498,18 @@ class NER:
         return list(self.span.span_doc) + [self.label]
 
 
-class PredictedNER:
+class PredictedNER(NER):
     def __init__(self, ner, sentence, sentence_offsets=False):
         "The input should be a list: [span_start, span_end, label, raw_score, softmax_score]."
-        self.span = Span(ner[0], ner[1], sentence, sentence_offsets)
-        self.label = ner[2]
+        super().__init__(ner, sentence, sentence_offsets)
         self.raw_score = ner[3]
         self.softmax_score = ner[4]
 
     def __repr__(self):
-        return f"{self.span.__repr__()}: {self.label} with confidence {self.softmax_score:0.4f}"
+        return super().__repr__() + f" with confidence {self.softmax_score:0.4f}"
 
     def to_json(self):
-        return (list(self.span.span_doc) +
-                [self.label, format_float(self.raw_score), format_float(self.softmax_score)])
+        return super().to_json() + [format_float(self.raw_score), format_float(self.softmax_score)]
 
 
 class Relation:
@@ -388,47 +532,37 @@ class Relation:
         return list(self.pair[0].span_doc) + list(self.pair[1].span_doc) + [self.label]
 
 
-class PredictedRelation:
+class PredictedRelation(Relation):
     def __init__(self, relation, sentence, sentence_offsets=False):
         "Input format: [start_1, end_1, start_2, end_2, label, raw_score, softmax_score]."
-        # TODO(dwadden) Refactor this to share code with `Relation` class.
-        start1, end1 = relation[0], relation[1]
-        start2, end2 = relation[2], relation[3]
-        label = relation[4]
-        span1 = Span(start1, end1, sentence, sentence_offsets)
-        span2 = Span(start2, end2, sentence, sentence_offsets)
-        self.pair = (span1, span2)
-        self.label = label
+        super().__init__(relation, sentence, sentence_offsets)
         self.raw_score = relation[5]
         self.softmax_score = relation[6]
 
     def __repr__(self):
-        return (f"{self.pair[0].__repr__()}, {self.pair[1].__repr__()}: {self.label} "
-                f"with confidence {self.softmax_score:0.4f}")
+        return super().__repr__() + f" with confidence {self.softmax_score:0.4f}"
 
     def to_json(self):
-        return (list(self.pair[0].span_doc) + list(self.pair[1].span_doc) +
-                [self.label, format_float(self.raw_score), format_float(self.softmax_score)])
+        return super().to_json() + [format_float(self.raw_score), format_float(self.softmax_score)]
 
 
-class Event:
+# This code is a little tricky. We want Events to use Triggers and Arguments, while PredictedEvents
+# use PredictedTriggers and PredictedArguments. I create a base class that defines the methods, and
+# then subclasses set the constructors to be used.
+class EventBase(ABC):
     def __init__(self, event, sentence, sentence_offsets=False):
         trig = event[0]
         args = event[1:]
-        trigger_token = Token(trig[0], sentence, sentence_offsets)
-        self.trigger = Trigger(trigger_token, trig[1])
+        self.trigger = self.trigger_constructor(trig, sentence, sentence_offsets)
 
         self.arguments = []
         for arg in args:
-            span = Span(arg[0], arg[1], sentence, sentence_offsets)
-            self.arguments.append(Argument(span, arg[2], self.trigger.label))
+            this_arg = self.argument_constructor(arg, self.trigger.label, sentence, sentence_offsets)
+            self.arguments.append(this_arg)
 
     def to_json(self):
-        trig_json = [self.trigger.token.ix_doc, self.trigger.label]
-        arg_json = []
-        for arg in self.arguments:
-            arg_entry = list(arg.span.span_doc) + [arg.role]
-            arg_json.append(arg_entry)
+        trig_json = self.trigger.to_json()
+        arg_json = [arg.to_json() for arg in self.arguments]
         res = [trig_json] + arg_json
         return res
 
@@ -441,9 +575,20 @@ class Event:
         return res
 
 
-class Events:
+class Event(EventBase):
+    trigger_constructor = Trigger
+    argument_constructor = Argument
+
+
+class PredictedEvent(EventBase):
+    trigger_constructor = PredictedTrigger
+    argument_constructor = PredictedArgument
+
+
+# Same pattern as above. Define base class, and pass constructors to child classes.
+class EventsBase(ABC):
     def __init__(self, events_json, sentence, sentence_offsets=False):
-        self.event_list = [Event(this_event, sentence, sentence_offsets)
+        self.event_list = [self.event_constructor(this_event, sentence, sentence_offsets)
                            for this_event in events_json]
         self.triggers = set([event.trigger for event in self.event_list])
         self.arguments = set([arg for event in self.event_list for arg in event.arguments])
@@ -496,6 +641,14 @@ class Events:
         return False
 
 
+class Events(EventsBase):
+    event_constructor = Event
+
+
+class PredictedEvents(EventsBase):
+    event_constructor = PredictedEvent
+
+
 class Cluster:
     def __init__(self, cluster, cluster_id, sentences, sentence_starts):
         # Make sure the cluster ID is an int.
@@ -505,15 +658,20 @@ class Cluster:
         n_tokens = sum([len(x) for x in sentences])
 
         members = []
+        members_crossing_sentences = []
+
         for entry in cluster:
-            sentence_ix = get_sentence_of_span(entry, sentence_starts, n_tokens)
-            sentence = sentences[sentence_ix]
-            span = Span(entry[0], entry[1], sentence)
-            ners = [x for x in sentence.ner if x.span == span]
-            assert len(ners) <= 1
-            ner = ners[0] if len(ners) == 1 else None
-            to_append = ClusterMember(span, ner, sentence, cluster_id)
-            members.append(to_append)
+            try:
+                sentence_ix = get_sentence_of_span(entry, sentence_starts, n_tokens)
+                sentence = sentences[sentence_ix]
+                span = Span(entry[0], entry[1], sentence)
+                to_append = ClusterMember(span, sentence, cluster_id)
+                members.append(to_append)
+            except SpanCrossesSentencesError:
+                members_crossing_sentences.append(entry)
+
+        if members_crossing_sentences:
+            print("Found a coreference cluster member that crosses sentence boundaries; skipping.")
 
         self.members = members
         self.cluster_id = cluster_id
@@ -527,11 +685,13 @@ class Cluster:
     def __getitem__(self, ix):
         return self.members[ix]
 
+    def __len__(self):
+        return len(self.members)
+
 
 class ClusterMember:
-    def __init__(self, span, ner, sentence, cluster_id):
+    def __init__(self, span, sentence, cluster_id):
         self.span = span
-        self.ner = ner
         self.sentence = sentence
         self.cluster_id = cluster_id
 

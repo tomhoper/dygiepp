@@ -22,7 +22,7 @@ names = ["train", "dev", "test"]
 
 folds = {}
 for name in names:
-    folds[name] = load_jsonl(f"data/processed/collated/{name}.jsonl")
+    folds[name] = load_jsonl(f"data/processed/collated/{name}.json")
 
 sentences = {}
 for name in names:

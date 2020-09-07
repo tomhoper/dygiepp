@@ -79,7 +79,12 @@ def agreement_calculation(prediction_dict, golddf):
 
 def get_agreement_on_initial_annotations(root):
     print("calculating agreement on initial round of annotations ")
-    name_list = ["sara", "megan", "madeline"]
+    name_list = ["megan", "madeline", "sara"]
+    avg_p = 0.0
+    avg_r = 0.0
+    avg_f1 = 0.0
+    count = 0.0
+
     for i in range(len(name_list)):
         print ("for name "  + (name_list[i]))
         prediction_dict = {}
@@ -108,30 +113,40 @@ def get_agreement_on_initial_annotations(root):
             stats_df = pd.DataFrame(res_list[k],columns =["name","P","R","F1","collapse","match_mettric","threshold"])
             stats_path = stat_path / 'stats.tsv'
             stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
-
+            count += 1.0
+            # import pdb; pdb.set_trace()
+            avg_p += res_list[k][7][1]
+            avg_r += res_list[k][7][2]
+            avg_f1 += res_list[k][7][3]
+    print("avg agreement on p is :" + str(avg_p/count))
+    print("avg agreement on r is :" + str(avg_r/count))
+    print("avg agreement on f1 is :" + str(avg_f1/count))
 
 def get_agreement_on_after_self_correction(root):
 
     #TODO there is a bug here. what is madeline corrects the intersection of megan and sara again 
     print("calculating agreement after self correction ")
-    name_list = ["tom", "madeline"]
-
+    name_list = ["madeline", "megan"]
+    avg_p = 0.0
+    avg_r = 0.0
+    avg_f1 = 0.0
+    count = 0.0
     for i in range(len(name_list)):
         print ("for name "  + (name_list[i]))
         prediction_dict = {}
         for j in range(i+1, len(name_list)):
             name1 = name_list[i]
             name2 = name_list[j]
-            # file1_name = "annotations_" + name1 + '.tsv'
-            # file2_name = "corrections_" + name2 + '.tsv'
-            # gold_path = pathlib.Path(args.root) /'annotations' / 'tsvs' / file1_name
-            # annotated_path = pathlib.Path(args.root) / 'corrections_old' / 'tsvs' / file2_name
-            gold_path = "bio_annotations/validations/madeline_tom.tsv"
-            annotated_path = "bio_annotations/validations/input_madeline_tom.tsv"
-            file1_name = "corrections_" + name1 + '.tsv'
+            file1_name = "annotations_" + name1 + '.tsv'
             file2_name = "corrections_" + name2 + '.tsv'
-            gold_path = pathlib.Path(args.root) / 'self_corrections' / 'tsvs' / file1_name
-            annotated_path = pathlib.Path(args.root) / 'self_corrections' / 'tsvs' / file2_name
+            gold_path = pathlib.Path(args.root) /'annotations_old' / 'tsvs' / file1_name
+            annotated_path = pathlib.Path(args.root) / 'corrections_old' / 'tsvs' / file2_name
+            # gold_path = "bio_annotations/validations/madeline_tom.tsv"
+            # annotated_path = "bio_annotations/validations/input_madeline_tom.tsv"
+            # file1_name = "corrections_" + name1 + '.tsv'
+            # file2_name = "corrections_" + name2 + '.tsv'
+            # gold_path = pathlib.Path(args.root) / 'self_corrections' / 'tsvs' / file1_name
+            # annotated_path = pathlib.Path(args.root) / 'self_corrections' / 'tsvs' / file2_name
 
 
             GOLD_PATH = pathlib.Path(gold_path)
@@ -152,7 +167,13 @@ def get_agreement_on_after_self_correction(root):
             stats_df = pd.DataFrame(res_list[k],columns =["name","P","R","F1","collapse","match_mettric","threshold"])
             stats_path = stat_path / 'stats.tsv'
             stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
-
+            avg_p += res_list[k][7][1]
+            avg_r += res_list[k][7][2]
+            avg_f1 += res_list[k][7][3]
+            count += 1.0
+    print("avg agreement on p is :" + str(avg_p/count))
+    print("avg agreement on r is :" + str(avg_r/count))
+    print("avg agreement on f1 is :" + str(avg_f1/count))
 
 if __name__ == '__main__':
 
@@ -172,7 +193,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #report part 1: for all annotator print cross agreement on initial annotation
-    # get_agreement_on_initial_annotations(args.root)
+    get_agreement_on_initial_annotations(args.root)
 
     #report part 2: for all annotator print cross agreement after one round of correction
 

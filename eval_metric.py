@@ -54,7 +54,7 @@ if __name__ == '__main__':
     mech_effect = args.mech_effect_mode
     if args.mech_effect_mode == True:
         gold_path = pathlib.Path(args.root) / args.gold_combo  /  'mech_effect' / 'gold_par.tsv'
-        pred_dir = pathlib.Path(args.root) / 'predictions'/ args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
+        pred_dir = pathlib.Path(args.root) / 'predictions'/"scierc_pretrained"/ args.data_combo / 'mapped' / 'mech_effect' / "pred.tsv"
         stat_path = pathlib.Path(args.root) / 'stats' / args.data_combo / 'mapped' / 'mech_effect/' 
 
     if args.mech_effect_mode == False:
@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     coref_path = "/data/dave/proj/for-aida/coref-predictions-2020-09-04/gold/merged.tsv"
     coref = read_coref_file(coref_path)
-    
+    coref = None
     GOLD_PATH = pathlib.Path(gold_path)
     PREDS_PATH = pathlib.Path(pred_dir)
     golddf = pd.read_csv(GOLD_PATH, sep="\t",header=None, names=["id","text","arg0","arg1","rel","y"])
@@ -148,9 +148,9 @@ if __name__ == '__main__':
                                 F1 = 0
                                 corr_pred= []
                         span_corr_pred, span_precision,span_recall, span_F1 = ie_span_eval(v,golddf, match_metric=match_metric,jaccard_thresh=th)
-                        res = [k, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4), 100*round(p_at_k[0],4),100*round(p_at_k[1],4),100*round(p_at_k[2],4), 100*round(span_precision, 4), 100*round(span_recall, 4), 100*round(span_F1, 4), mech_effect, collapse, match_metric, th, consider_reverse]
+                        res = [k, 100*round(precision,3), 100*round(recall,3), 100*round(F1,3), 100*round(p_at_k[0],3),100*round(p_at_k[1],3),100*round(p_at_k[2],3), 100*round(span_precision, 4), 100*round(span_recall, 4), 100*round(span_F1, 4), mech_effect, collapse, match_metric, th, consider_reverse]
                         if collapse == True and consider_reverse == True:
-                            res_latex = [k, match_metric, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4), 100*round(p_at_k[3],4),100*round(p_at_k[0],4), 100*round(span_precision, 4), 100*round(span_recall, 4), 100*round(span_F1, 4)]
+                            res_latex = [k, match_metric, 100*round(precision,3), 100*round(recall,3), 100*round(F1,3), 100*round(p_at_k[3],3),100*round(p_at_k[0],3), 100*round(span_precision, 4), 100*round(span_recall, 4), 100*round(span_F1, 4)]
                             res_latex_list.append(res_latex)
                         res_span = [k, span_precision, span_recall, span_F1, match_metric, th]
                         res_list.append(res)

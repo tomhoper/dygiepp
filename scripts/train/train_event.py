@@ -19,11 +19,21 @@ import pathlib
 
 if __name__ == '__main__':
 
+    os.environ['ie_train_data_path'] = "/home/aida/covid_clean/dygiepp/data/processed/collated/train.json"
+    os.environ['ie_dev_data_path'] = "/home/aida/covid_clean/dygiepp/data/processed/collated/dev.json"
+    os.environ['ie_test_data_path'] = "/home/aida/covid_clean/dygiepp/data/processed/collated/test.json"
+
+    os.environ['CUDA_DEVICE'] = "1,2,3"
+    os.environ['cuda_device'] = "1,2,3"
+    os.environ['CUDA_VISIBLE_DEVICES'] = "1,2,3"
+
+
+    os.environ['master_port'] = '3030'
     allennlp_command = [
             "allentune",
             "search",
             "--experiment-name",
-            "/data/aida/covid_aaai/experiments/events"
+            "/data/aida/covid_aaai/experiments/events",
             "--num-gpus",
             "3",
             "--num-cpus",
