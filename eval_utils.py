@@ -45,11 +45,105 @@ def get_srl_predictor():
     srlpredictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/bert-base-srl-2020.03.24.tar.gz")
     return(srlpredictor)
 
-def allenlp_base_relations(predictor,eval_df,four_col=False):
+def allenlp_base_relations(predictor,eval_df,four_col=False,filter_biosrl=False,collapse=True):
     uniquetext = eval_df.drop_duplicates(subset=["text"])
     print("getting predictions...")
     d = [{"sentence":t} for t in uniquetext.text.values]
     preds = predictor.predict_batch_json(d)
+    
+    #TODO move this to somewhere nice (json)...
+    srlmap = {"treat":"MECHANISM",
+    "effect":"EFFECT",
+    "affect":"EFFECT",
+    "caus":"EFFECT",
+    "interact":"EFFECT",
+    "us": "MECHANISM",
+    "administ": "MECHANISM",
+    "diagnos": "MECHANISM",
+    "stimulat": "EFFECT",
+    "inhibit": "EFFECT",
+    "prevent": "MECHANISM",
+    "augment": "MECHANISM",
+    "accompan": "EFFECT",
+    "act":"MECHANISM",
+    "activate":"MECHANISM",
+    "alter":"MECHANISM",
+    "associat":"EFFECT",
+    "bind":"MECHANISM",
+    "abolish": "EFFECT",
+    "abrogate": "MECHANISM",
+    "block": "MECHANISM",
+    "carry": "MECHANISM",
+    "catalys": "MECHANISM",
+    "clon": "MECHANISM",
+    "begin": "MECHANISM",
+    "confer": "EFFECT",
+    "contain": "MECHANISM",
+    "conserve": "MECHANISM",
+    "control": "MECHANISM",
+    "cultu": "MECHANISM",
+    "decreas": "MECHANISM",
+    "delet": "MECHANISM",
+    "depend": "MECHANISM",
+    "deriv": "MECHANISM",
+    "develop": "MECHANISM",
+    "differentiat": "MECHANISM",
+    "disrupt": "MECHANISM",
+    "regulat" : "MECHANISM",
+    "eliminat" : "MECHANISM",
+    "encod" : "MECHANISM",
+    "enhanc" : "MECHANISM",
+    "exert" : "MECHANISM",
+    "express" : "EFFECT",
+    "function" : "MECHANISM", 
+    "generat"  : "MECHANISM",
+    "includ"  : "MECHANISM",    
+    "increas"  : "MECHANISM",    
+    "induc" : "EFFECT",     
+    "influenc" : "EFFECT",     
+    "inhibit"   : "EFFECT",   
+    "initiat" : "MECHANISM",
+    "interact": "EFFECT",      
+    "interfer" : "EFFECT",
+    "involv" : "EFFECT", 
+    "isolat" : "MECHANISM",     
+    "lack"  : "EFFECT",    
+    "lead"  :"EFFECT",   
+    "link"  :"EFFECT",  
+    "lose"  :"EFFECT",    
+    "mediat" :"EFFECT",     
+    "modify"     : "MECHANISM",  
+    "modulat"   :"EFFECT",    
+    "mutat"   : "MECHANISM",   
+    "participat" : "MECHANISM",     
+    "phosphrylat" : "MECHANISM",     
+    "play"      :"EFFECT",  
+    "prevent"    : "MECHANISM",  
+    "produc"      : "MECHANISM",
+    "proliferat"      :"EFFECT",  
+    "promot"      : "MECHANISM",
+    "purif"      : "MECHANISM",
+    "recogniz"    : "MECHANISM",  
+    "reduc"      : "MECHANISM",
+    "regulat"      : "MECHANISM",
+    "repress"      : "MECHANISM",
+    "requir"      : "MECHANISM",
+    "result"    :"EFFECT",   
+    "reveal"      :"EFFECT",  
+    "signal"      :"EFFECT",  
+    "skip"      : "MECHANISM",
+    "splic"      : "MECHANISM",
+    "stimulat"     :"EFFECT",  
+    "suppress"    : "MECHANISM", 
+    "target"      : "MECHANISM",
+    "transactivat"   : "MECHANISM",   
+    "transcrib"      : "MECHANISM",
+    "transfect"      : "MECHANISM",
+    "transform"     : "MECHANISM", 
+    "trigger"      :"EFFECT",  
+    "truncat"      : "MECHANISM",      
+    }
+
 
     relations =[]
     i = 0
@@ -60,10 +154,19 @@ def allenlp_base_relations(predictor,eval_df,four_col=False):
             rels0 = [r.lstrip("ARG0:") for r in rels if r.startswith("ARG0")]
             rels1 = [r.lstrip("ARG1:") for r in rels if r.startswith("ARG1")]
             if len(relsv) and len(rels0) and len(rels1):
+                if filter_biosrl or (not collapse):
+                    triggermatch = [(relsv[0],v) for k,v in srlmap.items() if (k in relsv[0])]
+                    if not len(triggermatch):
+                        continue
+                    
                 if four_col:
                     relations.append([uniquetext.iloc[i]["id"],uniquetext.iloc[i]["text"],rels0[0],rels1[0]])
                 else:
-                    relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0]])
+                    if collapse:
+                        relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0]])
+                    else:
+                        print(preds)
+                        relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0],triggermatch[0][1],"1.0"])
         i+=1
     return relations
 
