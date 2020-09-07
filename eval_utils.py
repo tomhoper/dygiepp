@@ -463,7 +463,6 @@ def annotation_eval(relations, golddf, coref=None, collapse = False, match_metri
     goldrels = golddf[["id","arg0","arg1","rel", "text"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1","text"]).set_index("id")
     predrels = relations[["id","arg0","arg1","rel","text"]].set_index("id",inplace=False)
-
     good_preds = []
     seen_pred_gold = {}
     seen_gold = {}
@@ -759,7 +758,9 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
 #########################################################################################
 def ie_eval_event(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=False, topK=None, consider_reverse=False):
     goldrels = golddf[["id","arg0","trigger","arg1"]]#.drop_duplicates()
+    print(len(goldrels))
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","trigger","arg1"]).set_index("id")
+    print(len(goldrels))
 
     if type(coref) ==pd.core.frame.DataFrame:
         corefrels = coref.set_index("id")

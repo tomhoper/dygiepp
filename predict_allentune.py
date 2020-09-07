@@ -91,7 +91,7 @@ if __name__ == '__main__':
         test_dir = pathlib.Path(args.root) / 'UnifiedData' / args.test_path_combo / 'mapped' / 'mech_effect' 
         serial_dir = pathlib.Path(args.root) / 'experiments' / args.data_combo / 'mapped' / 'mech_effect'
         if args.test_data:
-          pred_dir = pathlib.Path(args.root) / 'predictions' / "scierc_pretrained" / args.data_combo / 'mapped' / 'mech_effect'
+          pred_dir = pathlib.Path(args.root) / 'predictions' / args.data_combo / 'mapped' / 'mech_effect'
         else:
           pred_dir = pathlib.Path(args.root) / 'predictions_dev' / args.data_combo / 'mapped' / 'mech_effect'
 

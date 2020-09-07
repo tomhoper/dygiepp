@@ -1,7 +1,7 @@
 local template = import "/home/tom/dygiepp/training_config/template.libsonnet";
 
 template.DyGIE {
-  bert_model: "allenai/scibert_scivocab_cased",
+  bert_model: "allenai/biomed_roberta_base",
   cuda_device: 0,
   loss_weights: {
     ner: 1.0,

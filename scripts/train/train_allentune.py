@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     if args.gpu_count > 0:
         os.environ['CUDA_VISIBLE_DEVICES'] = ",".join([str(i) for i in range(args.gpu_count)])
-        os.environ['cuda_devices'] = ",".join([str(i) for i in range(args.gpu_count)])
+        os.environ['cuda_device'] = ",".join([str(i) for i in range(args.gpu_count)])
         os.environ['master_port'] = '2323'
 
     allennlp_command = [

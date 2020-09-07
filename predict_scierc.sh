@@ -31,12 +31,22 @@ fi
  allennlp predict pretrained/scierc-lightweight.tar.gz /data/aida/covid_aaai/UnifiedData/covid_anno_par_sentence_madeline_final/mapped/mech/test.json --predictor dygie --include-package dygie --use-dataset-reader --output-file /data/aida/covid_aaai/predictions/scierc_pretrained/covid_anno_par_sentence_madeline_final/mapped/mech/pred.json --cuda-device 3
  allennlp predict pretrained/scierc-lightweight.tar.gz /data/aida/covid_aaai/UnifiedData/covid_anno_par_sentence_madeline_final_tom_stiching/mapped/mech/test.json --predictor dygie --include-package dygie --use-dataset-reader --output-file /data/aida/covid_aaai/predictions/scierc_pretrained/covid_anno_par_sentence_madeline_final_tom_stiching/mapped/mech/pred.json --cuda-device 3
 
+
+ allennlp predict pretrained/scierc-lightweight.tar.gz /data/aida/covid_aaai/UnifiedData/covid_anno_par_madeline_sentences_matchcd/mapped/mech/test.json --predictor dygie --include-package dygie --use-dataset-reader --output-file /data/aida/covid_aaai/predictions/chemprot_pretrained/covid_anno_par_madeline_sentences_matchcd/mapped/mech/pred.json --cuda-device 3
+
+
  allennlp predict pretrained/scierc-lightweight.tar.gz /data/aida/covid_aaai/UnifiedData/covid_anno_par_madeline_sentences_matchcd/mapped/mech/test.json --predictor dygie --include-package dygie --use-dataset-reader --output-file /data/aida/covid_aaai/predictions/scierc_pretrained/covid_anno_par_madeline_sentences_matchcd/mapped/mech/pred.json --cuda-device 3
+ allennlp predict pretrained/chemprot.tar.gz /data/aida/covid_aaai/UnifiedData/covid_anno_par_madeline_sentences_matchcd/mapped/mech/test.json --predictor dygie --include-package dygie --use-dataset-reader --output-file /data/aida/covid_aaai/predictions/chemprot_pretrained/covid_anno_par_madeline_sentences_matchcd/mapped/mech/pred.json --cuda-device 3
  allennlp predict pretrained/scierc-lightweight.tar.gz /data/aida/covid_aaai/UnifiedData/covid_anno_par_madeline_sentences_matchcd/mapped/mech_effect/test.json --predictor dygie --include-package dygie --use-dataset-reader --output-file /data/aida/covid_aaai/predictions/scierc_pretrained/covid_anno_par_madeline_sentences_matchcd/mapped/mech_effect/pred.json --cuda-device 3
+ allennlp predict pretrained/chemprot.tar.gz /data/aida/covid_aaai/UnifiedData/covid_anno_par_madeline_sentences_matchcd/mapped/mech_effect/test.json --predictor dygie --include-package dygie --use-dataset-reader --output-file /data/aida/covid_aaai/predictions/chemprot_pretrained/covid_anno_par_madeline_sentences_matchcd/mapped/mech_effect/pred.json --cuda-device 3
  
 
- python dygie_pred_to_tsv.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/predictions/scierc_pretrained --mech_effect_mode
- python dygie_pred_to_tsv.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/predictions/scierc_pretrained
+python dygie_pred_to_tsv.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/predictions/scierc_pretrained --mech_effect_mode
+python dygie_pred_to_tsv.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/predictions/scierc_pretrained
+python eval_metric.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/  --mech_effect_mode --gold_combo gold_madeline_sentences_matchcd
+
+python dygie_pred_to_tsv.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/predictions/chemprot_pretrained --mech_effect_mode
+python dygie_pred_to_tsv.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/predictions/chemprot_pretrained
 python eval_metric.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/  --mech_effect_mode --gold_combo gold_madeline_sentences_matchcd
 
 
