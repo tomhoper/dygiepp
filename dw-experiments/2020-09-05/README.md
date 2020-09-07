@@ -12,7 +12,7 @@ These steps should work. For a description of what's going on, see the "Scripts"
 - Run `bash script/train.sh covid-event-biomedroberta` and `bash script/train.sh covid-event-pubmedbert`. This will train the event models.
 - Run `bash script/evaluate.sh covid-event-biomedroberta` and `bash script/evaluate.sh covid-event-pubmedbert` to evaluate using old "ACE-style" metrics.
 - Run `bash script/predict.sh covid-event-biomedroberta` and `bash script/predict.sh covid-event-pubmedbert` to make predictions.
-- Then, run the remaining numbered Python scripts in order, from `03_collect_results.py` to `06_metrics_exact_match.py`. 
+- Then, run the remaining numbered Python scripts in order, from `03_collect_results.py` to `07_metrics_exact_match.py`. 
 
 
 ## Results (Exact match)
