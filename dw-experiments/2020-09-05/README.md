@@ -37,3 +37,52 @@ These steps should work. For a description of what's going on, see the README fr
 | arg_class_precision  |          0.6142 |       0.5856 |
 | arg_class_recall     |          0.4304 |       0.5968 |
 | arg_class_f1         |          0.5061 |       0.5911 |
+
+
+## Scripts
+
+Details of what's going on in the scripts.
+
+### Ordered
+
+- `01_collate.py`: Split into train / dev / test and collate.
+- `02_check_folds.py`: The results are so good, I wanted to double-check that the folds are disjoint.
+- `03_collect_results.py`: Make a table.
+  - Outputs: `results/summary.tsv`, `results/summary.md` (shown above).
+- `05_double_check.py`: Double-check the metrics I report. There are a few wrinkles here:
+  - 4or ACE, a token can only trigger a single event. This isn't the case for our data.
+  - For ACE eveluation, an argument is correct if the span, event type, and argument type are correct. Since there's only one event type, this is kind of easy as an evaluation for the COVID data.
+  - For ACE, there can be multiple arguments of the same type; for us, a given trigger always has two arguments, with a single argument of each type.
+  - Based on these differences, it makes sense to further "decode" the COVID event predictions to match the COVID data format. I'll do that decoding.
+- `05_decode_predictions.py`: Decode into COVID event format.
+  - Outputs: `results/predictions/events-pubmedbert/decoded`.
+- `06_convert_to_tsv.py`: Convert gold data and predictions to `.tsv`. The output goes to `results/predictions/covid-event-pubmedbert/tsv` Each line has:
+  - Document ID.
+  - Sentence.
+  - arg0
+  - trig
+  - arg1
+  - (arg0, trig, arg1)_logit (predicted only).
+  - (arg0, trig, arg1)_softmax (predictions only.)
+- `08_metrics_exact_match.py`: Compute exact match metrics. Model only gets credit for an event if it correctly predicts trig, arg0, and arg1 exactly.
+  - Outputs: `results/summary-exact-match`
+
+
+### Library-ish
+
+- `train.sh`: Run training.
+  - Outputs: `models`
+- `evaluate.sh`: Run test set evaluation.
+  - Outputs: `results/metrics`
+- `predict.sh`: Make predictions using PubMedBERT, which does better.
+  - Outputs: `results/predictions/covid-event-pubmedbert/collated`
+- `decode.py`: Decode predictions so that they match the format for our data rather than the ACE data.
+
+## Annotation notes from Tom
+
+- Ignore relations between two `ENTITY`'s and only look at relations between a `TRIGGER` and an `ENTITY`.
+- Here's the way to generate SciERC events from these annotations:
+  - for every TRIGGER entity t,
+    - for every  TRIGGER_ARG0 relation outgoing from t to entity e0,
+      - for every  TRIGGER_ARG1 relation outgoing from t to entity e1 ,
+        - create “event” e <- [e0, t, e1]
