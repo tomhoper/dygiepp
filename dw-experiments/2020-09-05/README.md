@@ -2,6 +2,17 @@ This is an exact copy of `2020-09-04`. The only change is the way the data are s
 
 The numbers on the scripts are also decremented by 1, since we no longer need the first script to process the event data.
 
+## Steps to reproduce
+
+These steps should work. For a description of what's going on, see the README from [2020-09-04](https://github.com/tomhoper/dygiepp/blob/master/dw-experiments/2020-09-04/README.md); it provides a description of the inputs and outputs. The only difference between that experiment and this one is the split used for the event data.
+
+- Copy the data from `allgood:/data/aida/covid_aaai/UnifiedData/events_covid/mapped/mech_effect` to `data/raw/mech_effect`.
+- Run `python script/01_collate.py`
+- Run `python script/02_check_folds.py` to make sure the train, dev, and test folds are disjoint.
+- Run `bash script/train.sh covid-event-biomedroberta` and `bash script/train.sh covid-event-pubmedbert`. This will train the event models.
+- Run `bash script/evaluate.sh covid-event-biomedroberta` and `bash script/evaluate.sh covid-event-pubmedbert` to evaluate using old "ACE-style" metrics.
+- Run `bash script/predict.sh covid-event-biomedroberta` and `bash script/predict.sh covid-event-pubmedbert` to make predictions.
+- Then, run the remaining numbered Python scripts in order, from `03_collect_results.py` to `07_metrics_exact_match.py`. 
 
 
 ## Results (Exact match)
