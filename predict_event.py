@@ -80,13 +80,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # test_dir = pathlib.Path(args.root) / 'UnifiedData' / 'covid_anno_par_madeline_sentences_matchcd' / 'mapped' / 'mech_effect' 
-    serial_dir = pathlib.Path(args.root) / 'experiments' / "events" 
+    serial_dir = pathlib.Path(args.root) / 'experiments' / "events_sentence" 
     if args.test_data:
-      collated_pred_dir = pathlib.Path(args.root) / 'predictions' / "events" / 'mapped_collated' / 'mech_effect'
-      pred_dir = pathlib.Path(args.root) / 'predictions' / "events" / 'mapped' / 'mech_effect'
+      collated_pred_dir = pathlib.Path(args.root) / 'predictions' / "events_sentence_correct" / 'mapped_collated' / 'mech_effect'
+      pred_dir = pathlib.Path(args.root) / 'predictions' / "events_sentence_correct" / 'mapped' / 'mech_effect'
     else:
-      collated_pred_dir = pathlib.Path(args.root) / 'predictions_dev' / "events" / 'mapped_collated' / 'mech_effect'
-      pred_dir = pathlib.Path(args.root) / 'predictions_dev' / "events" / 'mapped' / 'mech_effect'
+      collated_pred_dir = pathlib.Path(args.root) / 'predictions_dev' / "events_sentence_correct" / 'mapped_collated' / 'mech_effect'
+      pred_dir = pathlib.Path(args.root) / 'predictions_dev' / "events_sentence_correct" / 'mapped' / 'mech_effect'
     # test_dir = "/home/aida/covid_clean/dygiepp/data/processed/split"
     test_dir = "/home/aida/covid_clean/dygiepp/data/processed/collated/"
     if args.test_data:
@@ -96,8 +96,8 @@ if __name__ == '__main__':
    
 
     for file in os.listdir(str(serial_dir)):
-      if file == "run_24_2020-09-06_18-11-23_t9lt_5l" or file == "run_24_2020-09-06_17-58-095u168rv5" or file == "run_24_2020-09-06_18-10-15_y8crruz":
-          continue
+      # if file == "run_24_2020-09-06_18-11-23_t9lt_5l" or file == "run_24_2020-09-06_17-58-095u168rv5" or file == "run_24_2020-09-06_18-10-15_y8crruz":
+      #     continue
       # if file != "run_18_2020-09-06_21-10-48w170bpge":
         # continue
       trail_strat_str = "run_"

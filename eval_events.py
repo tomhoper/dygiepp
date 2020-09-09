@@ -13,8 +13,7 @@ import pandas as pd
 from tabulate import tabulate
 """
 Usage:
-python eval_metric.py --root ../coviddata --data_combo scierc_chemprot_srl 
-python eval_metric.py --root ../coviddata --data_combo scierc_chemprot_srl --mech_effect_mode
+python eval_events.py --gold_path /data/aida/covid_aaai/event-gold/ --pred_path /data/aida/covid_aaai/predictions/events_sentence_correct/mapped/mech_effect/
 """
 
 if __name__ == '__main__':
@@ -84,12 +83,12 @@ if __name__ == '__main__':
             continue
         #only try non-collapsed labels for relations that have it (i.e. ours and gold)
         if "rel" not in v.columns:
-            collapse_opt = [True]
+            collapse_opt = [True, False]
         else:
             collapse_opt = [False,True]
         for match_metric in ["jaccard","substring", "rouge","exact"]:
         # for match_metric in ["rouge"]:
-            for consider_reverse in [False, True]:
+            for consider_reverse in [False]:
         # for match_metric in ["substring"]:
                 for collapse in collapse_opt:
                     th_opts = [1]
@@ -111,10 +110,11 @@ if __name__ == '__main__':
                         
                         corr_pred, precision,recall, F1 = ie_eval_event(v,golddf,coref=coref,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=consider_reverse)
                         
-                        res = [k, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4), collapse, match_metric, th, consider_reverse]
-                        if collapse == True and consider_reverse == True:
-                            res_latex = [k, match_metric, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4)]
-                            res_latex_list.append(res_latex)
+                        res = [k, 100*round(precision,4), 100*round(recall,3), 100*round(F1,3), collapse, match_metric, th, consider_reverse]
+                        # if collapse == True and consider_reverse == True:
+                        
+                        res_latex = [k, match_metric,th, collapse, 100*round(precision,3), 100*round(recall,3), 100*round(F1,3)]
+                        res_latex_list.append(res_latex)
                         res_list.append(res)
                         
 
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     print ("****")
 
     stats_df = pd.DataFrame(res_list,columns =["model","P","R","F1","collapse","match_mettric","threshold", "consider_reverse"])
-    stats_df_latex = pd.DataFrame(res_latex_list,columns =["model","match_metric","P","R","F1"])
+    stats_df_latex = pd.DataFrame(res_latex_list,columns =["model","metric","th","collapse","P","R","F1"]).set_index("model")
     # stats_path = stat_path / 'stats.tsv'
     print(str(stats_df_latex.to_latex()))
     # stats_df.to_csv(stats_path,header=True,index=False, sep="\t")

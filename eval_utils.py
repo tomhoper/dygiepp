@@ -279,7 +279,7 @@ def read_coref_matches(word_list, coref_rels):
           
     return word_list
 
-def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False, coref_match=False):
+def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, filter_stop=False, span_mode=False, consider_reverse=False, coref_match=False, reverse_on_effect=False):
       #changing this so that it can check all the coref matches of args.
       arg0match = False
       arg1match = False
@@ -321,12 +321,13 @@ def relation_matching(pair, metric, coref_rels=None, labels=[1,1], thresh=0.5, f
                             return True
                   # considering the reverse direction for evaluating relation
                   if consider_reverse == True:
-                    if span_matching(pair1_arg0,pair2_arg1,metric,thresh):
-                      arg0match = True
-                      if span_matching(pair1_arg1,pair2_arg0,metric,thresh):
-                          arg1match = True
-                          if labels[0]==labels[1]:
-                            return True
+                    if reverse_on_effect == False  or ( labels[0] == "effect" or labels[0] == "EFFECT"):   #ADDED LAST : for consider reverse we want to only consider label == Effect
+                        if span_matching(pair1_arg0,pair2_arg1,metric,thresh):
+                          arg0match = True
+                          if span_matching(pair1_arg1,pair2_arg0,metric,thresh):
+                              arg1match = True
+                              if labels[0]==labels[1]:
+                                return True
 
       if span_mode:
           return (arg0match or arg1match) and labels[0]==labels[1]
@@ -748,7 +749,7 @@ def ie_eval_agreement(relations, golddf, coref=None, collapse = False, match_met
 
     return corr_pred, precision,recall, F1
 
-def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None, consider_reverse=False):
+def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="substring", jaccard_thresh=0.5, transivity=True, topK=None, consider_reverse=False,reverse_on_effect=False):
     # import pdb; pdb.set_trace()
     goldrels = golddf[["id","arg0","arg1","rel"]]#.drop_duplicates()
     goldrels = goldrels.drop_duplicates(subset =["id","arg0","arg1"]).set_index("id")
@@ -768,7 +769,9 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
     
     if transivity:
         goldrels_trans = find_transivity_relations(goldrels)
-        predrels_trans = find_transivity_relations(predrels) 
+    else:
+        print("no transivity")
+        goldrels_trans = goldrels
 
     good_preds = []
     found_from_gold = []
@@ -797,7 +800,7 @@ def ie_eval(relations, golddf, coref=None, collapse = False, match_metric="subst
                     # import pdb; pdb.set_trace()
                     labels = [pair[0][2],pair[1][2]]
 
-                m = relation_matching(pair,metric=match_metric,labels=labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse)
+                m = relation_matching(pair,metric=match_metric,labels=labels,thresh=jaccard_thresh,coref_rels=coref_rels,consider_reverse=consider_reverse,reverse_on_effect=reverse_on_effect)
                 #changing this so that it can check all the coref matches of args.if m and
                 if m and ((i,pair[0][0],pair[0][1],pair[1][0],pair[1][1]) not in seen_pred_gold):
                     if len(pair[0][0]) == 1:

@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--gold_path',
                         type=Path,
                         help='root dataset folder, contains train/dev/test',
-                        default="/data/aida/covid_aaai/event-pred/",
+                        default="/data/aida/covid_aaai/event-gold/",
                         required=False)
     parser.add_argument('--test_data',
                         action='store_true')
@@ -60,9 +60,9 @@ if __name__ == '__main__':
 
          
     if args.test_data:
-      pred_dir = pathlib.Path(args.root) / 'predictions' / "events" / 'mapped' / 'mech_effect'
+      pred_dir = pathlib.Path(args.root) / 'predictions' / "events_sentence_correct" / 'mapped' / 'mech_effect'
     else:
-      pred_dir = pathlib.Path(args.root) / 'predictions_dev' / "events" / 'mapped' / 'mech_effect'
+      pred_dir = pathlib.Path(args.root) / 'predictions_dev' / "events_sentence_correct" / 'mapped' / 'mech_effect'
     
     
     GOLD_PATH = pathlib.Path(gold_path)
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     #get results
     res_list = []
     res_latex_list = []
-    import pdb; pdb.set_trace()
+    # import pdb; .set_trace()
     for k,v in prediction_dict.items():
         print(k)
         trial_score = 0.0
@@ -134,13 +134,14 @@ if __name__ == '__main__':
             continue
         #only try non-collapsed labels for relations that have it (i.e. ours and gold)
         if "rel" not in v.columns:
-            collapse_opt = [True]
+            collapse_opt = [False]
         else:
             collapse_opt = [False,True]
         for match_metric in ["substring","exact"]:
 
         # for match_metric in ["rouge"]:
             for consider_reverse in [False, True]:
+                # print(collapse)
         # for match_metric in ["substring"]:
                 for collapse in collapse_opt:
                     th_opts = [1]
@@ -163,9 +164,9 @@ if __name__ == '__main__':
                         corr_pred, precision,recall, F1 = ie_eval_event(v,golddf,coref=coref,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=consider_reverse)
                         trial_score += F1
                         res = [k, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4), collapse, match_metric, th, consider_reverse]
-                        if collapse == True and consider_reverse == True:
-                            res_latex = [k, match_metric, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4)]
-                            res_latex_list.append(res_latex)
+                        # if collapse == True and consider_reverse == True:
+                        res_latex = [k, match_metric, 100*round(precision,4), 100*round(recall,4), 100*round(F1,4)]
+                        res_latex_list.append(res_latex)
                         res_list.append(res)
         if trial_score > best_run_score:
             best_run_score = trial_score

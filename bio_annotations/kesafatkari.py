@@ -321,6 +321,115 @@ def write_stiching_docs(metadata_path, input_file_path, id_list, stiching_file_p
                   json.dump(sorted_parts[i][1], correct_output_file)
                   correct_output_file.write("\n")
 
+
+
+
+def write_stiching_docs_events(metadata_path, input_file_path, id_list, stiching_file_path, correct_file_path):
+    docs = [json.loads(line) for line in open(input_file_path)]
+    # metadata = read_metadata(metadata_path)
+    output_file = open(stiching_file_path, "w")
+    correct_output_file = open(correct_file_path, "w")
+
+    output_docs = []
+    for doc in docs:
+      if doc["meta"]["doc_key"] not in id_list:
+        json.dump(doc, correct_output_file)
+        correct_output_file.write("\n")
+
+    for doc_id in id_list:
+        # text = metadata[doc_id[:doc_id.index("_abstract")]]
+        text = " ".join(process_paragraph(text)[0])
+        sorted_parts = find_all_docs_in_order_by_docid(docs, doc_id, text)
+        
+        sorted_parts = add_missing_parts(text, sorted_parts, doc_id)
+        next_need_stiching = False
+        new_next_flag = False
+        for i in range(len(sorted_parts)):
+            # if doc_id == "tc14sa65_abstract":
+            #     import pdb; pdb.set_trace()
+            
+            if new_next_flag == True:
+              new_next_flag = False
+              continue
+            doc_part = sorted_parts[i][1]
+            if not( doc_part['text'].rstrip().endswith('.') or  doc_part['text'].rstrip().endswith('!') or  doc_part['text'].rstrip().endswith('?')) and not i == len(sorted_parts)-1:
+                             
+                #checking which direction of movement results in moving less tokens
+                doc_before = sorted_parts[i][1]
+                doc_next = sorted_parts[i+1][1]
+                
+                if '.' not in doc_before['text'] and '!' not in doc_before['text'] and '?' not in doc_before['text']:
+                  extra_string_before = 10000
+                else:
+                  cutting_ind_from_before = doc_before['text'].rindex(re.findall("\?|\.|\!", doc_before['text'])[len(re.findall("\?|\.|\!", doc_before['text'])) - 1])
+                  extra_string_before = len(doc_before['text'][cutting_ind_from_before+1:])
+
+                  while doc_before['text'][cutting_ind_from_before+1].isdigit() or doc_before['text'][cutting_ind_from_before-8:cutting_ind_from_before+1] == "D61 in E." or (len(doc_before['text']) > cutting_ind_from_before+3 and (doc_before['text'][cutting_ind_from_before-3] == '.' or doc_before['text'][cutting_ind_from_before+3] == '.')):
+                    try:
+                      cutting_ind_from_before = doc_before['text'][:cutting_ind_from_before-1].rindex(re.findall("\?|\.|\!", doc_before['text'])[len(re.findall("\?|\.|\!", doc_before['text']))-2])
+                      extra_string_before = len(doc_before['text'][cutting_ind_from_before+1:])
+                      if (len(doc_before['text']) > cutting_ind_from_before+4 and doc_before['text'][cutting_ind_from_before+3] == '.'):               
+                        cutting_ind_from_before = doc_before['text'][:cutting_ind_from_before-1].rindex(re.findall("\?|\.|\!", doc_before['text'])[len(re.findall("\?|\.|\!", doc_before['text']))-3])
+                        extra_string_before = len(doc_before['text'][cutting_ind_from_before+1:])
+                    except:
+                      extra_string_before = 10000
+                      break
+  
+                try:
+                  cutting_ind_from_next = doc_next['text'].index(re.findall("\?|\.|\!", doc_next['text'])[0])
+                  extra_string_next = len(doc_next['text'][:cutting_ind_from_next+1])
+                  
+                except:
+                  extra_string_next = 5000000
+                  # import pdb; pdb.set_trace()
+                
+                while (cutting_ind_from_next+1 < len(doc_next['text']) and doc_next['text'][cutting_ind_from_next+1].isdigit()) or doc_next['text'][cutting_ind_from_next-8:cutting_ind_from_next+1] == "D61 in E." or (len(doc_next['text']) > cutting_ind_from_next+3 and (doc_next['text'][cutting_ind_from_next-3] == '.' or doc_next['text'][cutting_ind_from_next+3] == '.')):
+                # if doc_next['text'][cutting_ind_from_next-1:cutting_ind_from_next+2] in ["9.1","0.0"]:   #edge case
+                  try:  
+                    cutting_ind_from_next = doc_next['text'].index(re.findall("\?|\.|\!", doc_next['text'])[1], cutting_ind_from_next + 1)
+                    extra_string_next = len(doc_next['text'][:cutting_ind_from_next+1])
+                  except:
+                    extra_string_next = 5000000
+                    break
+                    # import pdb; pdb.set_trace()
+
+                
+                if extra_string_next >  extra_string_before: # it is better to move the previous partial sentence to next partition
+                  if doc_before['text'] == "":
+                    import pdb; pdb.set_trace()
+                  new_before, cutting_string = correct_before_doc_removing_last_sentence(doc_before)
+                  new_next = correct_next_doc_adding_first_sentence(doc_next, cutting_string)
+                  if new_next['text'] == "":
+                    import pdb; pdb.set_trace()
+
+                  else:
+                    if "answer" not in new_before:
+                      import pdb; pdb.set_trace()
+                    json.dump(new_before, correct_output_file)
+                    correct_output_file.write("\n")
+                    next_need_stiching = True
+
+                else:
+                  new_next, cutting_string = correct_next_doc_removing_first_sentence(doc_next)
+                  new_before = correct_before_doc_adding_last_sentence(doc_before, cutting_string)
+
+
+                  json.dump(new_before, output_file)
+                  output_file.write("\n")
+
+                if new_next['text'] != "":
+                  sorted_parts[i+1][1] = new_next
+                else:
+                  new_next_flag = True
+            else:  #the parition does not contain partial sentence and can be written to correct output
+                if next_need_stiching == True:
+                  next_need_stiching = False
+                  json.dump(sorted_parts[i][1], output_file)
+                  output_file.write("\n")
+                else:
+                  json.dump(sorted_parts[i][1], correct_output_file)
+                  correct_output_file.write("\n")
+
                 
 
 # doc_id_list = find_the_ids_with_issues("corrections/jsons/corrections_tom.jsonl")

@@ -32,16 +32,16 @@ def agreement_accuracy_calculation(prediction_dict, golddf):
                 accuracy = annotation_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.5)
                 res = [k, accuracy, collapse, match_metric, 0.5]
                 res_list[k].append(res)
-                print('annotator: {0} collapsed: {1} metric: {2} accuracy:{3} threshold:{4}'.format(k, collapse, match_metric, round(accuracy,2), 0.5))
+                print('annotator: {0} collapsed: {1} metric: {2} accuracy:{3} threshold:{4}'.format(k, collapse, match_metric, round(accuracy,3), 0.5))
                 if match_metric == "jaccard":
                     accuracy = annotation_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.4)
                     res = [k, accuracy, collapse, match_metric, 0.4]
                     res_list[k].append(res)
-                    # print('annotator: {0} collapsed: {1} metric: {2} accuracy:{3} threshold:{4}'.format(k, collapse, match_metric, round(accuracy,2), 0.4))
+                    # print('annotator: {0} collapsed: {1} metric: {2} accuracy:{3} threshold:{4}'.format(k, collapse, match_metric, round(accuracy,3), 0.4))
                     accuracy = annotation_eval(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=0.3)
                     res = [k, accuracy, collapse, match_metric, 0.3]
                     res_list[k].append(res)
-                    print('annotator: {0} collapsed: {1} metric: {2} accuracy:{3} threshold:{4}'.format(k, collapse, match_metric, round(accuracy,2), 0.3))
+                    print('annotator: {0} collapsed: {1} metric: {2} accuracy:{3} threshold:{4}'.format(k, collapse, match_metric, round(accuracy,3), 0.3))
 
     return res_list
 
@@ -69,7 +69,7 @@ def agreement_calculation(prediction_dict, golddf):
                 for th in th_opts:
 
                     corr_pred, precision,recall, F1 = ie_eval_agreement(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=False)
-                    res = [k, round(precision,2), round(recall,2), round(F1,2), collapse, match_metric, th]
+                    res = [k, round(precision,3), round(recall,3), round(F1,3), collapse, match_metric, th]
                     res_list[k].append(res)
 
         print(tabulate(res_list[k], headers=["name","P","R","F1","collapse","match_mettric","threshold"]))  
@@ -79,7 +79,7 @@ def agreement_calculation(prediction_dict, golddf):
 
 def get_agreement_on_initial_annotations(root):
     print("calculating agreement on initial round of annotations ")
-    name_list = ["megan", "madeline", "sara"]
+    name_list = ["megan", "madeline", "sara", "kristina", "jeff"]
     avg_p = 0.0
     avg_r = 0.0
     avg_f1 = 0.0
@@ -115,12 +115,12 @@ def get_agreement_on_initial_annotations(root):
             stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
             count += 1.0
             # import pdb; pdb.set_trace()
-            avg_p += res_list[k][7][1]
-            avg_r += res_list[k][7][2]
-            avg_f1 += res_list[k][7][3]
-    print("avg agreement on p is :" + str(avg_p/count))
-    print("avg agreement on r is :" + str(avg_r/count))
-    print("avg agreement on f1 is :" + str(avg_f1/count))
+            avg_p += res_list[k][4][1]
+            avg_r += res_list[k][4][2]
+            avg_f1 += res_list[k][4][3]
+    print("avg agreement on p is :" + str(round(avg_p/count,3) * 100))
+    print("avg agreement on r is :" + str(round(avg_r/count,3) * 100))
+    print("avg agreement on f1 is :" + str(round(avg_f1/count,3) * 100))
 
 def get_agreement_on_after_self_correction(root):
 
@@ -197,7 +197,7 @@ if __name__ == '__main__':
 
     #report part 2: for all annotator print cross agreement after one round of correction
 
-    get_agreement_on_after_self_correction(args.root)
+    # get_agreement_on_after_self_correction(args.root)
 
     #get percentage of tome annotations that madeline chaneged 
     # golddf = pd.read_csv("bio_annotations/validations/madeline_tom.tsv", sep="\t",header=None, names=["id","text","arg0","arg1","rel","y","annotator"])

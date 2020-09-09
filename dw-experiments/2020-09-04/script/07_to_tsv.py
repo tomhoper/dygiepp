@@ -66,14 +66,15 @@ def format_dataset(dataset):
 ####################
 
 
-in_dir = "results/predictions/covid-event-pubmedbert/decoded"
-out_dir = "results/predictions/covid-event-pubmedbert/tsv"
+# in_dir = "results/predictions/covid-event-pubmedbert/decoded"
+in_dir = "/data/aida/covid_aaai/predictions_dev/events_sentence_correct/mapped/mech_effect/run_4_2020-09-08_08-02-31c9_tni49/"
+out_dir = "/data/aida/covid_aaai/event-gold/"
 
 os.makedirs(out_dir, exist_ok=True)
 
-for fold in ["train", "dev", "test"]:
-    dataset = document.Dataset.from_jsonl(f"{in_dir}/{fold}.jsonl")
+for fold in ["decode"]:
+    dataset = document.Dataset.from_jsonl(f"{in_dir}/{fold}.json")
     gold, pred = format_dataset(dataset)
 
     gold.to_csv(f"{out_dir}/{fold}-gold.tsv", sep="\t", float_format="%0.4f", index=False)
-    pred.to_csv(f"{out_dir}/{fold}-predicted.tsv", sep="\t", float_format="%0.4f", index=False)
+    # pred.to_csv(f"{out_dir}/{fold}-predicted.tsv", sep="\t", float_format="%0.4f", index=False)
