@@ -79,7 +79,7 @@ def agreement_calculation(prediction_dict, golddf):
 
 def get_agreement_on_initial_annotations(root):
     print("calculating agreement on initial round of annotations ")
-    name_list = ["megan", "madeline", "kristina", "jeff", "arezou"]
+    name_list = ["megan", "madeline", "kristina", "jeff"]
     avg_p = 0.0
     avg_r = 0.0
     avg_f1 = 0.0
