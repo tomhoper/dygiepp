@@ -165,7 +165,8 @@ def allenlp_base_relations(predictor,eval_df,four_col=False,filter_biosrl=False,
                     if collapse:
                         relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0]])
                     else:
-                        print(preds)
+                        # print(preds)
+                        print(triggermatch[0][1])
                         relations.append([uniquetext.iloc[i]["id"],rels0[0],rels1[0],triggermatch[0][1],"1.0"])
         i+=1
     return relations

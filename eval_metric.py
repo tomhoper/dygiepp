@@ -15,6 +15,7 @@ from tabulate import tabulate
 """
 Usage:
 conda activate /home/aida/miniconda3/envs/covid_eval
+python eval_metric.py --data_combo covid_anno_par_madeline_sentences_matchcd --root /data/aida/covid_aaai/  --mech_effect_mode --gold_combo gold_madeline_sentences_matchcd --open
 python eval_metric.py --root ../covid_aaai/ --data_combo covid_anno_par_madeline_sentences_matchcd --mech_effect_mode --gold_combo gold_madeline_sentences_matchcd --open 
 """
 
@@ -100,7 +101,7 @@ if __name__ == '__main__':
     if args.open:
         predictor_ie = get_openie_predictor()
         predictor_srl = get_srl_predictor()
-        use_collapse = True
+        use_collapse = False
         srl_relations = allenlp_base_relations(predictor_srl,golddf,filter_biosrl=False,collapse=use_collapse)
         srl_relations_fileter = allenlp_base_relations(predictor_srl,golddf,filter_biosrl=True,collapse=use_collapse)
         ie_relations = allenlp_base_relations(predictor_ie,golddf,filter_biosrl=False,collapse=use_collapse)
@@ -110,10 +111,14 @@ if __name__ == '__main__':
             prediction_dict["srl-fl"] = pd.DataFrame(srl_relations_fileter,columns=["id","arg0","arg1"])
         else:
             prediction_dict["srl"] = pd.DataFrame(srl_relations,columns=["id","arg0","arg1","rel","conf"])
-            prediction_dict["srl-fl"] = pd.DataFrame(srl_relations_file,columns=["id","arg0","arg1","rel","conf"])
+            prediction_dict["srl-fl"] = pd.DataFrame(srl_relations_fileter,columns=["id","arg0","arg1","rel","conf"])
         # print(prediction_dict["srl"])
-        prediction_dict["openie"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
-        prediction_dict["openie-fl"] = pd.DataFrame(ie_relations_filter,columns=["id","arg0","arg1"])
+        if use_collapse:
+            prediction_dict["openie"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
+            prediction_dict["openie-fl"] = pd.DataFrame(ie_relations,columns=["id","arg0","arg1"])
+        else:
+            prediction_dict["openie"] = pd.DataFrame(ie_relations_filter,columns=["id","arg0","arg1","rel","conf"])
+            prediction_dict["openie-fl"] = pd.DataFrame(ie_relations_filter,columns=["id","arg0","arg1","rel","conf"])
     
     #get results
     res_list = []

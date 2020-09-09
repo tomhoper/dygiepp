@@ -59,7 +59,7 @@ def agreement_calculation(prediction_dict, golddf):
             collapse_opt = [True]
         else:
             collapse_opt = [False,True]
-        for match_metric in ["jaccard", "rouge","substring"]:
+        for match_metric in ["jaccard", "rouge","exact"]:
             for collapse in collapse_opt:
                 th_opts = [1]
                 if match_metric == "rouge":
@@ -68,7 +68,7 @@ def agreement_calculation(prediction_dict, golddf):
                     th_opts = [0.3, 0.5]
                 for th in th_opts:
 
-                    corr_pred, precision,recall, F1 = ie_eval_agreement(v,golddf,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=False)
+                    corr_pred, precision,recall, F1 = ie_eval_agreement(v,golddf, transivity=False,collapse = collapse, match_metric=match_metric,jaccard_thresh=th,consider_reverse=False)
                     res = [k, round(precision,3), round(recall,3), round(F1,3), collapse, match_metric, th]
                     res_list[k].append(res)
 
@@ -79,7 +79,7 @@ def agreement_calculation(prediction_dict, golddf):
 
 def get_agreement_on_initial_annotations(root):
     print("calculating agreement on initial round of annotations ")
-    name_list = ["megan", "madeline", "sara", "kristina", "jeff"]
+    name_list = ["megan", "madeline", "kristina", "jeff", "arezou"]
     avg_p = 0.0
     avg_r = 0.0
     avg_f1 = 0.0
@@ -115,9 +115,9 @@ def get_agreement_on_initial_annotations(root):
             stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
             count += 1.0
             # import pdb; pdb.set_trace()
-            avg_p += res_list[k][4][1]
-            avg_r += res_list[k][4][2]
-            avg_f1 += res_list[k][4][3]
+            avg_p += res_list[k][7][1]
+            avg_r += res_list[k][7][2]
+            avg_f1 += res_list[k][7][3]
     print("avg agreement on p is :" + str(round(avg_p/count,3) * 100))
     print("avg agreement on r is :" + str(round(avg_r/count,3) * 100))
     print("avg agreement on f1 is :" + str(round(avg_f1/count,3) * 100))
@@ -167,9 +167,9 @@ def get_agreement_on_after_self_correction(root):
             stats_df = pd.DataFrame(res_list[k],columns =["name","P","R","F1","collapse","match_mettric","threshold"])
             stats_path = stat_path / 'stats.tsv'
             stats_df.to_csv(stats_path,header=True,index=False, sep="\t")
-            avg_p += res_list[k][7][1]
-            avg_r += res_list[k][7][2]
-            avg_f1 += res_list[k][7][3]
+            avg_p += res_list[k][6][1]
+            avg_r += res_list[k][6][2]
+            avg_f1 += res_list[k][6][3]
             count += 1.0
     print("avg agreement on p is :" + str(avg_p/count))
     print("avg agreement on r is :" + str(avg_r/count))
